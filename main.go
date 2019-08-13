@@ -2,21 +2,21 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"runtime"
 	"strings"
 
+	"github.com/donomii/glim"
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
 const (
-	width  = 1600
-	height = 900
-
-	size = 50
+	width  = 1000
+	height = 1000
 )
 
 func init() {
@@ -28,11 +28,23 @@ type block struct {
 	color  mgl32.Vec4
 }
 
-func main() {
+var saveCount int = 1
+
+func screenshot(filename string, width, height int32) {
+	gl.ReadBuffer(gl.FRONT_LEFT)
+	data := make([]byte, width*height*4)
+	//data[0], data[1], data[2] = 123, 213, 132 // Test if it's overwritten
+	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
+	//fmt.Println("Read at", 0, 0, data)
+	saveCount += 1
+	glim.SaveBuff(int(width), int(height), data, fmt.Sprintf("voxeltest%v.png", saveCount))
+
+}
+
+func initGraphics(size float32) (*glfw.Window, renderVars) {
 	if err := glfw.Init(); err != nil {
 		log.Fatal(err)
 	}
-	defer glfw.Terminate()
 
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 3)
@@ -45,7 +57,6 @@ func main() {
 		log.Fatal(err)
 	}
 	window.MakeContextCurrent()
-
 	if err := gl.Init(); err != nil {
 		log.Fatal(err)
 	}
@@ -67,15 +78,9 @@ func main() {
 	camUni := gl.GetUniformLocation(p, gl.Str("camera\x00"))
 	gl.UniformMatrix4fv(camUni, 1, false, &cam[0])
 
-	model := mgl32.Ident4()
-	modelUni := gl.GetUniformLocation(p, gl.Str("model\x00"))
-	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-
 	col := mgl32.Vec4{0, 0, 0, 1}
 	colUni := gl.GetUniformLocation(p, gl.Str("col\x00"))
 	gl.Uniform4fv(colUni, 1, &col[0])
-
-	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
 
 	// Vertex data
 	var vao uint32
@@ -91,11 +96,45 @@ func main() {
 	gl.EnableVertexAttribArray(vertAttrib)
 	gl.VertexAttribPointer(vertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 
-	// globals
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+	rv := renderVars{col, colUni, vao, vbo, vertAttrib, p}
 
+	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
+
+	return window, rv
+}
+func main() {
+	defer glfw.Terminate()
+	var size float32 = 50.0
+	window, rv := initGraphics(size)
+
+	blocks := makeBlocks(int(size))
+
+	var roty, rotx float32
+	for !window.ShouldClose() {
+
+		// check inputs
+		if window.GetKey(glfw.KeyLeft) == glfw.Press {
+			roty -= 0.05
+		}
+
+		if window.GetKey(glfw.KeyRight) == glfw.Press {
+			roty += 0.05
+		}
+
+		if window.GetKey(glfw.KeyUp) == glfw.Press {
+			rotx -= 0.05
+		}
+
+		if window.GetKey(glfw.KeyDown) == glfw.Press {
+			rotx += 0.05
+		}
+
+		//gl.Viewport(0, 0, 100, 100)
+		renderblocks(rv, window, rv.Program, blocks, rotx, roty, int(size))
+	}
+}
+
+func makeBlocks(size int) [][][]block {
 	// initialize blocks
 	blocks := make([][][]block, size)
 	for i := 0; i < size; i++ {
@@ -115,58 +154,63 @@ func main() {
 			}
 		}
 	}
+	return blocks
+}
 
-	var roty, rotx float32
+type renderVars struct {
+	Col        mgl32.Vec4
+	ColUni     int32
+	Vao        uint32
+	Vbo        uint32
+	VertAttrib uint32
+	Program    uint32
+}
 
-	for !window.ShouldClose() {
-		// check inputs
-		if window.GetKey(glfw.KeyLeft) == glfw.Press {
-			roty -= 0.05
-		}
+func renderblocks(rv renderVars, window *glfw.Window, p uint32, blocks [][][]block, rotx, roty float32, size int) {
 
-		if window.GetKey(glfw.KeyRight) == glfw.Press {
-			roty += 0.05
-		}
+	model := mgl32.Ident4()
+	modelUni := gl.GetUniformLocation(p, gl.Str("model\x00"))
+	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 
-		if window.GetKey(glfw.KeyUp) == glfw.Press {
-			rotx -= 0.05
-		}
+	// globals
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.ClearColor(0.8, 0.8, 1.0, 1.0)
 
-		if window.GetKey(glfw.KeyDown) == glfw.Press {
-			rotx += 0.05
-		}
+	//screenshot("voxeltest.png", 4000, 2000)
 
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-		for i := 0; i < size; i++ {
-			for j := 0; j < size; j++ {
-				for k := 0; k < size; k++ {
-					b := blocks[i][j][k]
-					if !b.active {
-						continue
-					}
-
-					gl.Uniform4fv(colUni, 1, &b.color[0])
-
-					fi := float32(i) - size/2
-					fj := float32(j) - size/2
-					fk := float32(k) - size/2
-
-					model = mgl32.HomogRotate3DY(roty)
-					model = model.Mul4(mgl32.HomogRotate3DX(rotx))
-					model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
-					model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
-
-					gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-					gl.BindVertexArray(vao)
-					gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			for k := 0; k < size; k++ {
+				b := blocks[i][j][k]
+				if !b.active {
+					continue
 				}
+
+				gl.Uniform4fv(rv.ColUni, 1, &b.color[0])
+
+				fi := float32(i) - float32(size)/2
+				fj := float32(j) - float32(size)/2
+				fk := float32(k) - float32(size)/2
+
+				model = mgl32.HomogRotate3DY(roty)
+				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
+				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
+
+				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+				gl.BindVertexArray(rv.Vao)
+				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
 			}
 		}
-
-		window.SwapBuffers()
-		glfw.PollEvents()
 	}
+
+	window.SwapBuffers()
+
+	glfw.PollEvents()
+
 }
 
 func newProgram(vSource, fSource string) (uint32, error) {
