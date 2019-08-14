@@ -1,4 +1,4 @@
-package main
+package govox
 
 var cubeVerts = []float32{
 	//  X, Y, Z
