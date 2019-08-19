@@ -2,7 +2,7 @@ package govox
 
 import (
 	"errors"
-	"fmt"
+
 	"log"
 	"math/rand"
 	"strings"
@@ -31,18 +31,29 @@ var BlocksBuffer [][][]Block
 
 var saveCount int = 1
 
-func Screenshot(filename string, width, height int32) {
-	gl.ReadBuffer(gl.FRONT_LEFT)
+func Screenshot(filename string, width, height int) {
+	gl.ReadBuffer(gl.BACK_LEFT)
 	data := make([]byte, width*height*4)
 	//data[0], data[1], data[2] = 123, 213, 132 // Test if it's overwritten
-	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
+	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
 	//fmt.Println("Read at", 0, 0, data)
 	saveCount += 1
-	glim.SaveBuff(int(width), int(height), data, fmt.Sprintf("voxeltest%v.png", saveCount))
+	glim.SaveBuff(int(width), int(height), data, filename)
 
 }
 
-func InitGraphics(size float32, width, height int) (*glfw.Window, RenderVars) {
+func ScreenshotBuff(width, height int) []byte {
+	gl.ReadBuffer(gl.BACK_LEFT)
+	data := make([]byte, width*height*4)
+	//data[0], data[1], data[2] = 123, 213, 132 // Test if it's overwritten
+	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data))
+	//fmt.Println("Read at", 0, 0, data)
+	saveCount += 1
+	return data
+
+}
+
+func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	if err := glfw.Init(); err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +86,7 @@ func InitGraphics(size float32, width, height int) (*glfw.Window, RenderVars) {
 	projUni := gl.GetUniformLocation(p, gl.Str("projection\x00"))
 	gl.UniformMatrix4fv(projUni, 1, false, &proj[0])
 
-	cam := mgl32.LookAtV(mgl32.Vec3{size * 1.8, size * 1.5, size * 2}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
+	cam := mgl32.LookAtV(mgl32.Vec3{float32(size) * 1.8, float32(size) * 1.5, float32(size) * 2}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
 	camUni := gl.GetUniformLocation(p, gl.Str("camera\x00"))
 	gl.UniformMatrix4fv(camUni, 1, false, &cam[0])
 
@@ -155,20 +166,21 @@ func MakeRandomBlocks(size int) [][][]Block {
 	}
 	return blocks
 }
-func Renderblocks(rv RenderVars, window *glfw.Window, p uint32, blocks [][][]Block, rotx, roty float32, size int) {
-
-	model := mgl32.Ident4()
-	modelUni := gl.GetUniformLocation(p, gl.Str("model\x00"))
-	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+func Renderblocks(rv RenderVars, window *glfw.Window, blocks [][][]Block, rotx, roty float32, size int) {
 
 	// globals
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
-	gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 
 	//screenshot("voxeltest.png", 4000, 2000)
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	model := mgl32.Ident4()
+	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 
 	for i := 0; i < size; i++ {
 		for j := 0; j < size; j++ {
@@ -196,6 +208,19 @@ func Renderblocks(rv RenderVars, window *glfw.Window, p uint32, blocks [][][]Blo
 		}
 	}
 
+	window.SwapBuffers()
+
+	glfw.PollEvents()
+
+}
+
+func DrawAny(rv RenderVars, window *glfw.Window, rotx, roty float32, fi, fj, fk float32, draw_callback func()) {
+	// globals
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	draw_callback()
 	window.SwapBuffers()
 
 	glfw.PollEvents()
