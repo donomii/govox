@@ -1,14 +1,18 @@
 package main
 
 import (
-	"math"
+	//	"log"
+	"fmt"
+	//"math"
 	"math/rand"
 	"runtime"
 
+	_ "log"
 	"time"
 
-	_ "log"
+	"github.com/go-gl/gl/v3.3-core/gl"
 
+	"github.com/donomii/glim"
 	"github.com/donomii/govox"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -28,15 +32,21 @@ var saveCount int = 1
 var lifeBlocks []bool
 
 type Actor struct {
-	Position [3]int
+	Position Vec3
 	Type     int
 }
 
+type Vec3 [3]int
+type voxMap [][][]govox.Block
+
 var Actrs []Actor
+var PlayerPos Vec3
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	var size float32 = 50.0
+
+	var size int = 20.0
+	InitGame(size)
 	window, rv := govox.InitGraphics(size, 1000, 1000)
 
 	//	blocks := makeBlocks(int(size))
@@ -50,202 +60,155 @@ func main() {
 	for i, _ := range lifeBlocks {
 		lifeBlocks[i] = (rand.Float32() < 0.5)
 	}
+	/*
+		go func() {
+			for {
+				lifeBlocks = cycle(int(size), lifeBlocks, true)
+				time.Sleep(1 * time.Second)
+			}
+		}()
+	*/
 
-	go func() {
-		for {
-			lifeBlocks = cycle(int(size), lifeBlocks, true)
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
+	maze := GenerateMaze(size)
+	middle := size / 2
+	PlayerPos = Vec3{middle, 0, middle}
 	var roty, rotx float32
+	lastInputTime := time.Now()
+
 	for !window.ShouldClose() {
 
-		// check inputs
-		if window.GetKey(glfw.KeyLeft) == glfw.Press {
-			roty -= 0.05
+		if glfw.Press == 1 {
+			if time.Now().Sub(lastInputTime).Nanoseconds() > 150000000 {
+				lastInputTime = time.Now()
+				wantPos := PlayerPos
+				if window.GetKey(glfw.KeyW) == glfw.Press {
+					wantPos[2] = wantPos[2] - 1
+				}
+				if window.GetKey(glfw.KeyS) == glfw.Press {
+					wantPos[2] = wantPos[2] + 1
+				}
+				if window.GetKey(glfw.KeyD) == glfw.Press {
+					wantPos[0] = wantPos[0] + 1
+				}
+				if window.GetKey(glfw.KeyA) == glfw.Press {
+					wantPos[0] = wantPos[0] - 1
+				}
+				if moveOk(wantPos, govox.BlocksBuffer) {
+					PlayerPos = wantPos
+				} else {
+					monsters = handleCollision(PlayerPos, wantPos)
+				}
+
+			}
+			// check inputs
+			if window.GetKey(glfw.KeyLeft) == glfw.Press {
+				roty -= 0.05
+			}
+
+			if window.GetKey(glfw.KeyRight) == glfw.Press {
+				roty += 0.05
+			}
+
+			if window.GetKey(glfw.KeyUp) == glfw.Press {
+				rotx -= 0.05
+			}
+
+			if window.GetKey(glfw.KeyDown) == glfw.Press {
+				rotx += 0.05
+			}
+
+			if window.GetKey(glfw.KeyDown) == glfw.Press {
+				rotx += 0.05
+			}
+
+		}
+		AddFloor(size, maze, govox.BlocksBuffer)
+		DrawPlayer(size, PlayerPos, govox.BlocksBuffer)
+		for _, m := range monsters {
+			DrawMonster(size, m, govox.BlocksBuffer)
 		}
 
-		if window.GetKey(glfw.KeyRight) == glfw.Press {
-			roty += 0.05
-		}
-
-		if window.GetKey(glfw.KeyUp) == glfw.Press {
-			rotx -= 0.05
-		}
-
-		if window.GetKey(glfw.KeyDown) == glfw.Press {
-			rotx += 0.05
-		}
-
-		//gl.Viewport(0, 0, 100, 100)
 		//blocks := lifeBlocks2Blocks(int(size), lifeBlocks, nil)
+
 		AddActors(Actrs, govox.BlocksBuffer)
-		govox.Renderblocks(rv, window, rv.Program, rise(int(size), govox.BlocksBuffer), rotx, roty, int(size))
+		//govox.BlocksBuffer = rise(int(size), govox.BlocksBuffer)
+		//govox.Renderblocks(rv, window, govox.BlocksBuffer, rotx, roty, int(size))
+
+		DrawCustom(rv, window, govox.BlocksBuffer, rotx, roty, 0, 0, 0, size)
+
 	}
 }
 
-func countNeighbours(pos, size int, lifeBlocks []bool) int {
-	var out int
-	for i := -1; i < 2; i = i + 1 {
-		for j := -1; j < 2; j = j + 1 {
-			for k := -1; k < 2; k = k + 1 {
-				if lifeBlocks[pos+i*size*size+j*size+k] && !(i == j && j == k) {
-					out = out + 1
-				}
-			}
-		}
-	}
-	return out
-}
+func RenderBlocks(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
 
-func cycle(size int, lifeBlocks []bool, wrapEdges bool) []bool {
-	// initialize blocks
-	blocks := make([]bool, size*size*size)
-	/*
-		for i := 0; i < size; i++ {
-			for j := 0; j < size; j++ {
-				for k := 0; k < size; k++ {
-					ii := i
-					jj := j
-					kk := k
+	model := mgl32.Ident4()
+	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 
-					if wrapEdges {
-						if i == 0 {
-							ii = size - 2
-						}
-						if i == size-1 {
-							ii = 1
-						}
-						if j == 0 {
-							jj = size - 2
-						}
-						if j == size-1 {
-							jj = 1
-						}
-						if k == 0 {
-							kk = size - 2
-						}
-						if k == size-1 {
-							kk = 1
-						}
-					}
-
-					blocks[i*size*size+j*size+k] = (countNeighbours(ii*size*size+jj*size+kk, size, lifeBlocks) > 3 && countNeighbours(ii*size*size+jj*size+kk, size, lifeBlocks) < 7)
-				}
-			}
-		}*/
-
-	return blocks
-}
-
-func GetBlock(blocks [][][]govox.Block, x, y, z int) *govox.Block {
-	size := len(blocks)
-	if x >= size {
-		return GetBlock(blocks, x-size, y, z)
-	}
-	if x < 0 {
-		return GetBlock(blocks, x+size, y, z)
-	}
-
-	if y >= size {
-		return GetBlock(blocks, x, y-size, z)
-	}
-	if y < 0 {
-		return GetBlock(blocks, x, y+size, z)
-	}
-
-	if z >= size {
-		return GetBlock(blocks, x, y, z-size)
-	}
-	if z < 0 {
-		return GetBlock(blocks, x, y, z+size)
-	}
-
-	//log.Println(x, y, z)
-	return &blocks[x][y][z]
-}
-func AddActors(Actrs []Actor, blocks [][][]govox.Block) {
-	for i, a := range Actrs {
-
-		GetBlock(blocks, a.Position[0], a.Position[1], a.Position[2]).Active = true
-		GetBlock(blocks, a.Position[0], a.Position[1], a.Position[2]).Color = mgl32.Vec4{1.0, 0.0, 0.0, 0.1}
-
-		//for j, _ := range a.Position {
-		//Actrs[i].Position[j] = a.Position[j] + rand.Intn(3) - 1
-		//}
-
-		Actrs[i].Position[0] = a.Position[0] + rand.Intn(3) - 1
-		Actrs[i].Position[2] = a.Position[2] + rand.Intn(3) - 1
-		//GetBlock(blocks, a.Position[0], a.Position[1], a.Position[2]).Active = true
-		//GetBlock(blocks, Actrs[i].Position[0], Actrs[i].Position[1], Actrs[i].Position[2]).Color = mgl32.Vec4{0.0, 0.0, 0.0, 1.0}
-	}
-
-}
-
-func lifeBlocks2Blocks(size int, lifeBlocks []bool, inblocks [][][]govox.Block) [][][]govox.Block {
-	// initialize blocks
-	blocks := inblocks
-	if inblocks == nil {
-		blocks = make([][][]govox.Block, size)
-	}
 	for i := 0; i < size; i++ {
-		if inblocks == nil {
-			blocks[i] = make([][]govox.Block, size)
-		}
 		for j := 0; j < size; j++ {
-			if inblocks == nil {
-				blocks[i][j] = make([]govox.Block, size)
-			}
 			for k := 0; k < size; k++ {
-
-				blocks[i][j][k] = govox.Block{
-					Active: lifeBlocks[i*size*size+j*size+k],
-					Color: mgl32.Vec4{
-						float32(math.Mod(float64(i*size*size+j*size+k), 256)) / 256,
-						0.0,
-						0.0,
-						1.0,
-					},
+				b := blocks[i][j][k]
+				if !b.Active {
+					continue
 				}
+
+				gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
+
+				fi := float32(i) - float32(size)/2
+				fj := float32(j) - float32(size)/2
+				fk := float32(k) - float32(size)/2
+
+				model = mgl32.HomogRotate3DY(roty)
+				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
+				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
+
+				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+				gl.BindVertexArray(rv.Vao)
+				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
 			}
 		}
 	}
-	return blocks
 }
 
-func rise(size int, blocks [][][]govox.Block) [][][]govox.Block {
-	// initialize blocks
+func DrawCustom(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, fi, fj, fk float32, size int) {
+	im, _ := glim.DrawStringRGBA(20, glim.RGBA{1.0, 1.0, 1.0, 1.0}, fmt.Sprintf("Monsters Remaining: %v", len(monsters)), "Asdfasdf")
+	pic, w, h := glim.GFormatToImage(im, nil, 0, 0)
+	//log.Printf("Rotx: %v, roty: %v\n", rotx, roty)
+	//glim.DumpBuff(pic, uint(w), uint(h))
+	/*pic := glim.RandPic(20, 20)
+	w := 20
+	h := 20*/
+	scale := float32(0.05)
 
-	for i := 0; i < size; i++ {
+	govox.DrawAny(rv, window, rotx, roty, fi, fj, fk, func() {
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		RenderBlocks(rv, window, blocks, rotx, roty, size)
+		rotx = -3.449998
+		roty = 0.7500001
+		for i := float32(0.0); i < float32(w); i = i + 1.0 {
+			for j := float32(0.0); j < float32(h); j = j + 1.0 {
+				if pic[4*(int(i)+int(j)*int(w))] > 0 {
 
-		for j := 1; j < size; j++ {
+					model := mgl32.Ident4()
+					modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+					gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 
-			for k := 0; k < size; k++ {
+					//screenshot("voxeltest.png", 4000, 2000)
 
-				blocks[i][j-1][k] = blocks[i][j][k]
-				blocks[i][j-1][k].Color[0] = blocks[i][j-1][k].Color.X() * float32(0.95)
-			}
-		}
-	}
-	for i := 0; i < size; i++ {
+					Color := mgl32.Vec4{1.0, 0.0, 0.0, 1.0}
+					gl.Uniform4fv(rv.ColUni, 1, &Color[0])
+					model = mgl32.HomogRotate3DY(roty)
+					model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+					model = model.Mul4(mgl32.Scale3D(scale, scale, scale))
+					model = model.Mul4(mgl32.Translate3D(fi+i, fj+j, fk))
 
-		for j := size - 1; j < size; j++ {
-
-			for k := 0; k < size; k++ {
-
-				blocks[i][j][k] = govox.Block{
-					Active: false,
-					Color: mgl32.Vec4{
-						float32(math.Mod(float64(i*size*size+j*size+k), 256)) / 256,
-						0.0,
-						0.0,
-						1.0,
-					},
+					gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+					gl.BindVertexArray(rv.Vao)
+					gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
 				}
 			}
 		}
-	}
-
-	return blocks
+	})
 }
