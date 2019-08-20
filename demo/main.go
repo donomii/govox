@@ -1,8 +1,11 @@
 package main
 
 import (
-	//	"log"
+	//	"math"
+
 	"fmt"
+	"log"
+
 	//"math"
 	"math/rand"
 	"runtime"
@@ -11,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
+	"github.com/tbogdala/Voxfile"
 
 	"github.com/donomii/glim"
 	"github.com/donomii/govox"
@@ -41,11 +45,45 @@ type voxMap [][][]govox.Block
 
 var Actrs []Actor
 var PlayerPos Vec3
+var palette []mgl32.Vec4
+
+func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
+	x := uint8(pos[0])
+	y := uint8(pos[1])
+	z := uint8(pos[2])
+	for _, v := range vox.Voxels {
+		blocks[v.X+x][v.Z+y][v.Y+z].Active = true
+		blocks[v.X+x][v.Z+y][v.Y+z].Color = palette[v.Index]
+
+	}
+	/*
+		size := uint32(sizei)
+		for i := uint32(0); i < vox.SizeX && i < size; i++ {
+			for j := uint32(0); j < vox.SizeY && j < size; j++ {
+				for k := uint32(0); k < vox.SizeZ && k < size; k++ {
+					log.Println(i, j, k)
+					blocks[i][j][k].Active = vox.Voxels[k*vox.SizeX*vox.SizeY+j*vox.SizeX+i].Index > 0
+				}
+			}
+		}
+	*/
+}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-
-	var size int = 20.0
+	voxFile, err := voxfile.DecodeFile("testdata/chr_sword.vox")
+	log.Println("Loaded character with size ", voxFile.SizeX, voxFile.SizeY, voxFile.SizeZ)
+	log.Println(err)
+	var size int = 100.0
+	palette = make([]mgl32.Vec4, 2000)
+	for i := 0; i < 2000; i++ {
+		palette[i] = mgl32.Vec4{
+			rand.Float32(),
+			rand.Float32(),
+			rand.Float32(),
+			1.0,
+		}
+	}
 	InitGame(size)
 	window, rv := govox.InitGraphics(size, 1000, 1000)
 
@@ -122,8 +160,11 @@ func main() {
 			}
 
 		}
+
+		ClearDisplay(size, govox.BlocksBuffer)
 		AddFloor(size, maze, govox.BlocksBuffer)
 		DrawPlayer(size, PlayerPos, govox.BlocksBuffer)
+		magica2govox(size, PlayerPos, voxFile, govox.BlocksBuffer)
 		for _, m := range monsters {
 			DrawMonster(size, m, govox.BlocksBuffer)
 		}
@@ -133,12 +174,18 @@ func main() {
 		AddActors(Actrs, govox.BlocksBuffer)
 		//govox.BlocksBuffer = rise(int(size), govox.BlocksBuffer)
 		//govox.Renderblocks(rv, window, govox.BlocksBuffer, rotx, roty, int(size))
-
+		//AddFourier(size, govox.BlocksBuffer)
 		DrawCustom(rv, window, govox.BlocksBuffer, rotx, roty, 0, 0, 0, size)
 
 	}
 }
 
+func ClearDisplay(size int, blocks voxMap) {
+	mapBlock(size, func(b govox.Block, i, j, k int) govox.Block {
+		b.Active = false
+		return b
+	}, blocks)
+}
 func RenderBlocks(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
 
 	model := mgl32.Ident4()

@@ -47,7 +47,7 @@ func AddActors(Actrs []Actor, blocks voxMap) {
 		//Actrs[i].Position[j] = a.Position[j] + rand.Intn(3) - 1
 		//}
 
-		Actrs[i].Position[0] = a.Position[0] + rand.Intn(3) - 1
+		Actrs[i].Position[1] = a.Position[0] + rand.Intn(3) - 1
 		Actrs[i].Position[2] = a.Position[2] + rand.Intn(3) - 1
 		//GetBlock(blocks, a.Position[0], a.Position[1], a.Position[2]).Active = true
 		//GetBlock(blocks, Actrs[i].Position[0], Actrs[i].Position[1], Actrs[i].Position[2]).Color = mgl32.Vec4{0.0, 0.0, 0.0, 1.0}
