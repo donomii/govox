@@ -48,10 +48,16 @@ var PlayerPos Vec3
 var palette []mgl32.Vec4
 
 func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered in magica2govox, drawing at position %v: %v\n", pos, r)
+		}
+	}()
 	x := uint8(pos[0])
 	y := uint8(pos[1])
 	z := uint8(pos[2])
 	for _, v := range vox.Voxels {
+		//log.Printf("%+v,%v,%v,%v\n", v, x, y, z)
 		blocks[v.X+x][v.Z+y][v.Y+z].Active = true
 		blocks[v.X+x][v.Z+y][v.Y+z].Color = palette[v.Index]
 
@@ -71,8 +77,10 @@ func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	voxFile, err := voxfile.DecodeFile("testdata/chr_sword.vox")
-	log.Println("Loaded character with size ", voxFile.SizeX, voxFile.SizeY, voxFile.SizeZ)
+	player, err := voxfile.DecodeFile("models/chr_sword.vox")
+	log.Println("Loaded character with size ", player.SizeX, player.SizeY, player.SizeZ)
+	wall, _ := voxfile.DecodeFile("models/wall.vox")
+	eye, _ := voxfile.DecodeFile("models/eye.vox")
 	log.Println(err)
 	var size int = 100.0
 	palette = make([]mgl32.Vec4, 2000)
@@ -131,7 +139,7 @@ func main() {
 				if window.GetKey(glfw.KeyA) == glfw.Press {
 					wantPos[0] = wantPos[0] - 1
 				}
-				if moveOk(wantPos, govox.BlocksBuffer) {
+				if moveOk(wantPos, maze) {
 					PlayerPos = wantPos
 				} else {
 					monsters = handleCollision(PlayerPos, wantPos)
@@ -162,20 +170,22 @@ func main() {
 		}
 
 		ClearDisplay(size, govox.BlocksBuffer)
+		AddMaze(size, PlayerPos, wall, maze, govox.BlocksBuffer)
 		AddFloor(size, maze, govox.BlocksBuffer)
 		DrawPlayer(size, PlayerPos, govox.BlocksBuffer)
-		magica2govox(size, PlayerPos, voxFile, govox.BlocksBuffer)
+		magica2govox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, govox.BlocksBuffer)
 		for _, m := range monsters {
 			DrawMonster(size, m, govox.BlocksBuffer)
+			AddMonster(size, m, PlayerPos, eye, govox.BlocksBuffer)
 		}
 
 		//blocks := lifeBlocks2Blocks(int(size), lifeBlocks, nil)
 
 		AddActors(Actrs, govox.BlocksBuffer)
 		//govox.BlocksBuffer = rise(int(size), govox.BlocksBuffer)
-		//govox.Renderblocks(rv, window, govox.BlocksBuffer, rotx, roty, int(size))
+		govox.Renderblocks(rv, window, govox.BlocksBuffer, rotx, roty, int(size))
 		//AddFourier(size, govox.BlocksBuffer)
-		DrawCustom(rv, window, govox.BlocksBuffer, rotx, roty, 0, 0, 0, size)
+		//DrawCustom(rv, window, govox.BlocksBuffer, rotx, roty, 0, 0, 0, size)
 
 	}
 }
