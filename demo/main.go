@@ -95,7 +95,7 @@ func main() {
 	}
 	InitGame(size)
 	window, rv := myvox.InitGraphics()
-	BlocksBuffer = MakeBlocks(int(size))
+	//BlocksBuffer := myvox.MakeBlocks(int(size))
 
 	//	blocks := makeBlocks(int(size))
 
