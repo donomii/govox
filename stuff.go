@@ -17,6 +17,14 @@ type Block struct {
 	Active bool
 	Color  mgl32.Vec4
 }
+type RenderVars struct {
+	Col        mgl32.Vec4
+	ColUni     int32
+	Vao        uint32
+	Vbo        uint32
+	VertAttrib uint32
+	Program    uint32
+}
 
 var BlocksBuffer [][][]Block
 
@@ -44,6 +52,11 @@ func ScreenshotBuff(width, height int) []byte {
 
 }
 
+func SetCam(size int, p uint32) {
+	cam := mgl32.LookAtV(mgl32.Vec3{float32(size) * 1.8, float32(size) * 1.5, float32(size) * 2}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
+	camUni := gl.GetUniformLocation(p, gl.Str("camera\x00"))
+	gl.UniformMatrix4fv(camUni, 1, false, &cam[0])
+}
 func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	if err := glfw.Init(); err != nil {
 		log.Fatal(err)
@@ -77,10 +90,7 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	projUni := gl.GetUniformLocation(p, gl.Str("projection\x00"))
 	gl.UniformMatrix4fv(projUni, 1, false, &proj[0])
 
-	cam := mgl32.LookAtV(mgl32.Vec3{float32(size) * 1.8, float32(size) * 1.5, float32(size) * 2}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
-	camUni := gl.GetUniformLocation(p, gl.Str("camera\x00"))
-	gl.UniformMatrix4fv(camUni, 1, false, &cam[0])
-
+	SetCam(size, p)
 	col := mgl32.Vec4{0, 0, 0, 1}
 	colUni := gl.GetUniformLocation(p, gl.Str("col\x00"))
 	gl.Uniform4fv(colUni, 1, &col[0])
@@ -102,8 +112,6 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	rv := RenderVars{col, colUni, vao, vbo, vertAttrib, p}
 
 	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
-
-	BlocksBuffer = MakeBlocks(int(size))
 
 	return window, rv
 }
@@ -157,8 +165,8 @@ func MakeRandomBlocks(size int) [][][]Block {
 	}
 	return blocks
 }
-func Renderblocks(rv RenderVars, window *glfw.Window, blocks [][][]Block, rotx, roty float32, size int) {
 
+func StartRender() {
 	// globals
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
@@ -168,6 +176,16 @@ func Renderblocks(rv RenderVars, window *glfw.Window, blocks [][][]Block, rotx, 
 	//screenshot("voxeltest.png", 4000, 2000)
 
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+}
+
+func FinishRender(window *glfw.Window) {
+	window.SwapBuffers()
+
+	glfw.PollEvents()
+}
+func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, rotx, roty float32, size int) {
+	blocks := *blocksptr
 
 	model := mgl32.Ident4()
 	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
@@ -199,13 +217,9 @@ func Renderblocks(rv RenderVars, window *glfw.Window, blocks [][][]Block, rotx, 
 		}
 	}
 
-	window.SwapBuffers()
-
-	glfw.PollEvents()
-
 }
 
-func DrawAny(rv RenderVars, window *glfw.Window, rotx, roty float32, fi, fj, fk float32, draw_callback func()) {
+func DrawAny(rv *RenderVars, window *glfw.Window, rotx, roty float32, fi, fj, fk float32, draw_callback func()) {
 	// globals
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
