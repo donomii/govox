@@ -6,30 +6,16 @@ import (
 
 	//"time"
 
-	"github.com/donomii/myvox"
+	"github.com/donomii/govox"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-func mapBlock(size int, f func(myvox.Block, int, int, int) myvox.Block, blocks voxMap) voxMap {
-
-	for i := 0; i < size; i++ {
-
-		for j := 0; j < size; j++ {
-
-			for k := 0; k < size; k++ {
-				blocks[i][j][k] = f(blocks[i][j][k], i, j, k)
-			}
-		}
-	}
-	return blocks
-}
-
 func AddFourier(size int, blocks voxMap) voxMap {
 	return mapBlock(size,
-		func(b myvox.Block, i, j, k int) myvox.Block {
+		func(b govox.Block, i, j, k int) govox.Block {
 
 			sizef := float32(size) / 8.0
-			return myvox.Block{
+			return govox.Block{
 				Active: fourier([3]float32{float32(i-size/2) / sizef, float32(j-size/2) / sizef, float32(k-size/2) / sizef}),
 				Color: mgl32.Vec4{
 					float32(i*i) / float32(size*size),

@@ -4,7 +4,7 @@ package main
 import (
 	"math"
 
-	"github.com/donomii/myvox"
+	"github.com/donomii/govox"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -69,15 +69,15 @@ func lifeBlocks2Blocks(size int, lifeBlocks []bool, inblocks voxMap) voxMap {
 	}
 	for i := 0; i < size; i++ {
 		if inblocks == nil {
-			blocks[i] = make([][]myvox.Block, size)
+			blocks[i] = make([][]govox.Block, size)
 		}
 		for j := 0; j < size; j++ {
 			if inblocks == nil {
-				blocks[i][j] = make([]myvox.Block, size)
+				blocks[i][j] = make([]govox.Block, size)
 			}
 			for k := 0; k < size; k++ {
 
-				blocks[i][j][k] = myvox.Block{
+				blocks[i][j][k] = govox.Block{
 					Active: lifeBlocks[i*size*size+j*size+k],
 					Color: mgl32.Vec4{
 						float32(math.Mod(float64(i*size*size+j*size+k), 256)) / 256,

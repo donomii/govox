@@ -17,10 +17,19 @@ import (
 	"github.com/tbogdala/Voxfile"
 
 	"github.com/donomii/glim"
-	"github.com/donomii/myvox"
+	"github.com/donomii/govox"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
+
+type RenderVars struct {
+	//Col        mgl32.Vec4
+	//ColUni     int32
+	Vao        uint32
+	Vbo        uint32
+	VertAttrib uint32
+	Program    uint32
+}
 
 func init() {
 	runtime.LockOSThread()
@@ -41,16 +50,16 @@ type Actor struct {
 }
 
 type Vec3 [3]int
-type voxMap [][][]myvox.Block
+type voxMap [][][]govox.Block
 
 var Actrs []Actor
 var PlayerPos Vec3
 var palette []mgl32.Vec4
 
-func magica2myvox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
+func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Recovered in magica2myvox, drawing at position %v: %v\n", pos, r)
+			fmt.Printf("Recovered in magica2govox, drawing at position %v: %v\n", pos, r)
 		}
 	}()
 	x := uint8(pos[0])
@@ -75,121 +84,38 @@ func magica2myvox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
 	*/
 }
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
-	player, err := voxfile.DecodeFile("models/chr_sword.vox")
-	log.Println(err)
-	log.Println("Loaded character with size ", player.SizeX, player.SizeY, player.SizeZ)
-	//wall, _ := voxfile.DecodeFile("models/wall.vox")
-	//eye, _ := voxfile.DecodeFile("models/eye.vox")
+var roty, rotx float32
 
-	var size int = 100.0
-	palette = make([]mgl32.Vec4, 2000)
-	for i := 0; i < 2000; i++ {
-		palette[i] = mgl32.Vec4{
-			rand.Float32(),
-			rand.Float32(),
-			rand.Float32(),
-			1.0,
-		}
-	}
-	InitGame(size)
-	window, rv := myvox.InitGraphics()
-	//BlocksBuffer := myvox.MakeBlocks(int(size))
-
-	//	blocks := makeBlocks(int(size))
-
-	lifeBlocks = make([]bool, int(size*size*size))
-	Actrs = []Actor{
-		Actor{[3]int{25, int(size) - 1, 25}, 1},
-		Actor{[3]int{35, int(size) - 1, 25}, 1},
-	}
-
-	for i, _ := range lifeBlocks {
-		lifeBlocks[i] = (rand.Float32() < 0.5)
-	}
-	/*
-		go func() {
-			for {
-				lifeBlocks = cycle(int(size), lifeBlocks, true)
-				time.Sleep(1 * time.Second)
-			}
-		}()
-	*/
-
-	//maze := GenerateMaze(size)
-	middle := size / 2
-	PlayerPos = Vec3{middle, 0, middle}
-	//var roty, rotx float32
-	//lastInputTime := time.Now()
-
-	angle := 0.0
-	previousTime := glfw.GetTime()
-	texture, err := myvox.NewTexture("square.png")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	for !window.ShouldClose() {
-		log.Println("Start loop")
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		log.Println("Updating")
-		//time.Sleep(1 * time.Second)
-		// Update
-		time := glfw.GetTime()
-		elapsed := time - previousTime
-		previousTime = time
-
-		angle += elapsed
-
-		model := mgl32.Ident4()
-		modelUniform := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
-		gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
-		model = mgl32.HomogRotate3D(float32(angle), mgl32.Vec3{0, 1, 0})
-		log.Println("Rendering")
-		// Render
-		gl.UseProgram(rv.Program)
-		gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
-
-		gl.BindVertexArray(rv.Vao)
-
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, texture)
-
-		gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
-		log.Println("Swapping")
-		// Maintenance
-		window.SwapBuffers()
-		glfw.PollEvents()
-		log.Println("End loop")
-	}
-
-	/*
-		for !window.ShouldClose() {
-
-			if glfw.Press == 1 {
-				if time.Now().Sub(lastInputTime).Nanoseconds() > 150000000 {
-					lastInputTime = time.Now()
-					wantPos := PlayerPos
-					if window.GetKey(glfw.KeyW) == glfw.Press {
-						wantPos[2] = wantPos[2] - 1
-					}
-					if window.GetKey(glfw.KeyS) == glfw.Press {
-						wantPos[2] = wantPos[2] + 1
-					}
-					if window.GetKey(glfw.KeyD) == glfw.Press {
-						wantPos[0] = wantPos[0] + 1
-					}
-					if window.GetKey(glfw.KeyA) == glfw.Press {
-						wantPos[0] = wantPos[0] - 1
-					}
-					if moveOk(wantPos, maze) {
-						PlayerPos = wantPos
-					} else {
-						monsters = handleCollision(PlayerPos, wantPos)
-					}
-
+func handleKeys(window *glfw.Window, maze [][]int) {
+	lastInputTime := time.Now()
+	lastInputTime2 := time.Now()
+	for {
+		if glfw.Press == 1 {
+			if time.Now().Sub(lastInputTime).Nanoseconds() > 150000000 {
+				lastInputTime = time.Now()
+				wantPos := PlayerPos
+				if window.GetKey(glfw.KeyW) == glfw.Press {
+					wantPos[2] = wantPos[2] - 1
 				}
+				if window.GetKey(glfw.KeyS) == glfw.Press {
+					wantPos[2] = wantPos[2] + 1
+				}
+				if window.GetKey(glfw.KeyD) == glfw.Press {
+					wantPos[0] = wantPos[0] + 1
+				}
+				if window.GetKey(glfw.KeyA) == glfw.Press {
+					wantPos[0] = wantPos[0] - 1
+				}
+				if moveOk(wantPos, maze) {
+					PlayerPos = wantPos
+				} else {
+					monsters = handleCollision(PlayerPos, wantPos)
+				}
+
+			}
+			if time.Now().Sub(lastInputTime2).Nanoseconds() > 15000000 {
+				lastInputTime2 = time.Now()
+
 				// check inputs
 				if window.GetKey(glfw.KeyLeft) == glfw.Press {
 					roty -= 0.05
@@ -212,37 +138,164 @@ func main() {
 				}
 
 			}
-
-			ClearDisplay(size, myvox.BlocksBuffer)
-			AddMaze(size, PlayerPos, wall, maze, myvox.BlocksBuffer)
-			AddFloor(size, maze, myvox.BlocksBuffer)
-			DrawPlayer(size, PlayerPos, myvox.BlocksBuffer)
-			magica2myvox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, myvox.BlocksBuffer)
-			for _, m := range monsters {
-				DrawMonster(size, m, myvox.BlocksBuffer)
-				AddMonster(size, m, PlayerPos, eye, myvox.BlocksBuffer)
-			}
-
-			//blocks := lifeBlocks2Blocks(int(size), lifeBlocks, nil)
-
-			AddActors(Actrs, myvox.BlocksBuffer)
-			//myvox.BlocksBuffer = rise(int(size), myvox.BlocksBuffer)
-			myvox.Renderblocks(rv, window, myvox.BlocksBuffer, rotx, roty, int(size))
-			//AddFourier(size, myvox.BlocksBuffer)
-			//DrawCustom(rv, window, myvox.BlocksBuffer, rotx, roty, 0, 0, 0, size)
-
 		}
+	}
+}
+
+var tiles int = 7
+var tileRadius = 3
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	player, err := voxfile.DecodeFile("models/chr_sword.vox")
+	log.Println(err)
+	log.Println("Loaded character with size ", player.SizeX, player.SizeY, player.SizeZ)
+	wall, _ := voxfile.DecodeFile("models/wall.vox")
+	eye, _ := voxfile.DecodeFile("models/eye.vox")
+
+	var size int = 140
+
+	palette = make([]mgl32.Vec4, 2000)
+	for i := 0; i < 2000; i++ {
+		palette[i] = mgl32.Vec4{
+			rand.Float32(),
+			rand.Float32(),
+			rand.Float32(),
+			1.0,
+		}
+	}
+	InitGame(size)
+	window, rv := govox.InitGraphics(size, 1000, 1000)
+	//BlocksBuffer := govox.MakeBlocks(int(size))
+
+	//	blocks := makeBlocks(int(size))
+
+	lifeBlocks = make([]bool, int(size*size*size))
+	Actrs = []Actor{
+		Actor{[3]int{25, int(size) - 1, 25}, 1},
+		Actor{[3]int{35, int(size) - 1, 25}, 1},
+	}
+
+	for i, _ := range lifeBlocks {
+		lifeBlocks[i] = (rand.Float32() < 0.5)
+	}
+
+	BlocksBuffer := govox.MakeBlocks(int(size))
+	LowResBlocks := govox.MakeBlocks(int(size) / 5)
+	/*
+		go func() {
+			for {
+				lifeBlocks = cycle(int(size), lifeBlocks, true)
+				time.Sleep(1 * time.Second)
+			}
+		}()
 	*/
+
+	maze := GenerateMaze(size)
+	middle := size / 2
+	PlayerPos = Vec3{middle, 0, middle}
+
+	//	angle := 0.0
+	//previousTime := glfw.GetTime()
+	//	texture, err := govox.NewTexture("square.png")
+	//if err != nil {
+	///	log.Fatalln(err)
+	//}
+	go handleKeys(window, maze)
+	for !window.ShouldClose() {
+
+		ClearDisplay(size, BlocksBuffer)
+		ClearDisplay(size/5, LowResBlocks)
+		AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
+		//AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
+		AddFloor(size, maze, BlocksBuffer)
+		DrawPlayer(size, PlayerPos, BlocksBuffer)
+		magica2govox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, BlocksBuffer)
+		for _, m := range monsters {
+			DrawMonster(size, m, BlocksBuffer)
+			AddMonster(size, m, PlayerPos, eye, BlocksBuffer)
+		}
+
+		//blocks := lifeBlocks2Blocks(int(size), lifeBlocks, nil)
+
+		AddActors(Actrs, BlocksBuffer)
+		//BlocksBuffer = rise(int(size), BlocksBuffer)
+
+		// globals
+		//		gl.Enable(gl.DEPTH_TEST)
+		//		gl.DepthFunc(gl.LESS)
+		//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+		//		gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+
+		//screenshot("voxeltest.png", 4000, 2000)
+		govox.StartRender()
+		govox.SetCam(size, rv.Program)
+		govox.RenderBlocks(&rv, window, &BlocksBuffer, rotx, roty, int(size))
+		govox.SetCam(size/5, rv.Program)
+		govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
+		govox.FinishRender(window)
+
+		//AddFourier(size, BlocksBuffer)
+		//DrawCustom(rv, window, BlocksBuffer, rotx, roty, 0, 0, 0, size)
+
+	}
+
 	log.Println("Finished!")
 }
 
 func ClearDisplay(size int, blocks voxMap) {
-	mapBlock(size, func(b myvox.Block, i, j, k int) myvox.Block {
+	mapBlock(size, func(b govox.Block, i, j, k int) govox.Block {
 		b.Active = false
 		return b
 	}, blocks)
 }
-func RenderBlocks(rv myvox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
+func RenderBlocks(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
+	// globals
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+
+	//screenshot("voxeltest.png", 4000, 2000)
+
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+	model := mgl32.Ident4()
+	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			for k := 0; k < size; k++ {
+				b := blocks[i][j][k]
+				if !b.Active {
+					continue
+				}
+
+				gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
+
+				fi := float32(i) - float32(size)/2
+				fj := float32(j) - float32(size)/2
+				fk := float32(k) - float32(size)/2
+
+				model = mgl32.HomogRotate3DY(roty)
+				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
+				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
+
+				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+				gl.BindVertexArray(rv.Vao)
+				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+			}
+		}
+	}
+
+	window.SwapBuffers()
+
+	glfw.PollEvents()
+}
+
+func RenderLowResBlocks(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
 
 	model := mgl32.Ident4()
 	//modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
@@ -275,7 +328,7 @@ func RenderBlocks(rv myvox.RenderVars, window *glfw.Window, blocks voxMap, rotx,
 	}
 }
 
-func DrawCustom(rv myvox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, fi, fj, fk float32, size int) {
+func DrawCustom(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, fi, fj, fk float32, size int) {
 	im, _ := glim.DrawStringRGBA(20, glim.RGBA{1.0, 1.0, 1.0, 1.0}, fmt.Sprintf("Monsters Remaining: %v", len(monsters)), "Asdfasdf")
 	pic, w, h := glim.GFormatToImage(im, nil, 0, 0)
 	//log.Printf("Rotx: %v, roty: %v\n", rotx, roty)
@@ -285,7 +338,7 @@ func DrawCustom(rv myvox.RenderVars, window *glfw.Window, blocks voxMap, rotx, r
 	h := 20*/
 	scale := float32(0.05)
 
-	myvox.DrawAny(rv, window, rotx, roty, fi, fj, fk, func() {
+	govox.DrawAny(rv, window, rotx, roty, fi, fj, fk, func() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 		RenderBlocks(rv, window, blocks, rotx, roty, size)
 		rotx = -3.449998

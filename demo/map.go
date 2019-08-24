@@ -4,14 +4,25 @@ package main
 import (
 	"math/rand"
 
-	"github.com/donomii/myvox"
+	"github.com/donomii/govox"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-func GetBlockV(blocks voxMap, position Vec3) *myvox.Block {
+func mapBlock(size int, f func(govox.Block, int, int, int) govox.Block, blocks voxMap) voxMap {
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			for k := 0; k < size; k++ {
+				blocks[i][j][k] = f(blocks[i][j][k], i, j, k)
+			}
+		}
+	}
+	return blocks
+}
+
+func GetBlockV(blocks voxMap, position Vec3) *govox.Block {
 	return GetBlock(blocks, position[0], position[1], position[2])
 }
-func GetBlock(blocks voxMap, x, y, z int) *myvox.Block {
+func GetBlock(blocks voxMap, x, y, z int) *govox.Block {
 	size := len(blocks)
 	if x >= size {
 		return GetBlock(blocks, x-size, y, z)
