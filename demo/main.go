@@ -89,7 +89,9 @@ var roty, rotx float32
 func handleKeys(window *glfw.Window, maze [][]int) {
 	lastInputTime := time.Now()
 	lastInputTime2 := time.Now()
+
 	for {
+		glfw.PollEvents()
 		if glfw.Press == 1 {
 			if time.Now().Sub(lastInputTime).Nanoseconds() > 150000000 {
 				lastInputTime = time.Now()
@@ -109,8 +111,10 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 				if moveOk(wantPos, maze) {
 					PlayerPos = wantPos
 				} else {
+					log.Println("Move not ok")
 					monsters = handleCollision(PlayerPos, wantPos)
 				}
+				log.Printf("Player: %v\n", PlayerPos)
 
 			}
 			if time.Now().Sub(lastInputTime2).Nanoseconds() > 15000000 {
@@ -142,18 +146,18 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 	}
 }
 
-var tiles int = 7
-var tileRadius = 3
+var tiles int = 21
+var tileRadius = 10
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	player, err := voxfile.DecodeFile("models/chr_sword.vox")
 	log.Println(err)
 	log.Println("Loaded character with size ", player.SizeX, player.SizeY, player.SizeZ)
-	wall, _ := voxfile.DecodeFile("models/wall.vox")
+	wall, _ := voxfile.DecodeFile("models/wall5.vox")
 	eye, _ := voxfile.DecodeFile("models/eye.vox")
 
-	var size int = 140
+	var size int = 105
 
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
@@ -165,7 +169,7 @@ func main() {
 		}
 	}
 	InitGame(size)
-	window, rv := govox.InitGraphics(size, 1000, 1000)
+	window, rv := govox.InitGraphics(size, 1900, 1000)
 	//BlocksBuffer := govox.MakeBlocks(int(size))
 
 	//	blocks := makeBlocks(int(size))
@@ -191,8 +195,8 @@ func main() {
 		}()
 	*/
 
-	maze := GenerateMaze(size)
-	middle := size / 2
+	maze := GenerateMaze(300)
+	middle := 150
 	PlayerPos = Vec3{middle, 0, middle}
 
 	//	angle := 0.0
@@ -206,8 +210,8 @@ func main() {
 
 		ClearDisplay(size, BlocksBuffer)
 		ClearDisplay(size/5, LowResBlocks)
-		AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
-		//AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
+		//AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
+		AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
 		AddFloor(size, maze, BlocksBuffer)
 		DrawPlayer(size, PlayerPos, BlocksBuffer)
 		magica2govox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, BlocksBuffer)
@@ -232,7 +236,7 @@ func main() {
 		govox.SetCam(size, rv.Program)
 		govox.RenderBlocks(&rv, window, &BlocksBuffer, rotx, roty, int(size))
 		govox.SetCam(size/5, rv.Program)
-		govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
+		//govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
 		govox.FinishRender(window)
 
 		//AddFourier(size, BlocksBuffer)
@@ -292,7 +296,6 @@ func RenderBlocks(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx
 
 	window.SwapBuffers()
 
-	glfw.PollEvents()
 }
 
 func RenderLowResBlocks(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {

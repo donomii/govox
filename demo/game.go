@@ -4,7 +4,7 @@ package main
 import (
 	"math/rand"
 
-//"time"
+	//"time"
 )
 
 var monsters []Vec3
@@ -27,8 +27,42 @@ func handleCollision(pl, other Vec3) []Vec3 {
 	return out
 }
 
+func InView(ppos, tpos Vec3) bool {
+
+	scrPos := Vec3{0, 0, 0}
+	scrPos[0] = (tpos[0] - ppos[0]) * (tpos[0] - ppos[0])
+	scrPos[1] = (tpos[1] - ppos[1]) * (tpos[1] - ppos[1])
+	scrPos[2] = (tpos[2] - ppos[2]) * (tpos[2] - ppos[2])
+
+	if scrPos[0] < tiles*tiles {
+		if scrPos[1] < tiles*tiles {
+			if scrPos[2] < tiles*tiles {
+				return true
+			}
+		}
+	}
+
+	return false
+	//return !blocks[pos[0]][pos[1]][pos[2]].Active
+}
+
 func moveOk(pos Vec3, maze [][]int) bool {
-	return !(maze[pos[0]][pos[2]] == 1)
+	size := 300 //FIXME
+	if maze[pos[0]][pos[2]] != 1 {
+		if pos[0] < size-tileRadius {
+			if pos[0] > tileRadius {
+				//if pos[1] < size-tileRadius {
+				//	if pos[1] > tileRadius {
+				if pos[2] < size-tileRadius {
+					if pos[2] > tileRadius {
+						return true
+					}
+				}
+			}
+
+		}
+	}
+	return false
 	//return !blocks[pos[0]][pos[1]][pos[2]].Active
 }
 

@@ -12,7 +12,7 @@ import (
 func DrawPlayer(size int, pos Vec3, blocks voxMap) {
 
 	for i := 0; i < 2; i++ {
-		blocks[pos[0]][pos[1]+i][pos[2]] = govox.Block{
+		blocks[size/2][pos[1]+i][size/2] = govox.Block{
 			Active: true,
 			Color: mgl32.Vec4{
 				0.0,
@@ -25,7 +25,7 @@ func DrawPlayer(size int, pos Vec3, blocks voxMap) {
 }
 
 func DrawMonster(size int, pos Vec3, blocks voxMap) {
-
+	return
 	for i := 0; i < 2; i++ {
 		if pos[0] > -1 {
 			blocks[pos[0]][pos[1]+i][pos[2]] = govox.Block{
@@ -44,10 +44,11 @@ func DrawMonster(size int, pos Vec3, blocks voxMap) {
 func AddMaze(size int, pos Vec3, wall *voxfile.VoxFile, maze [][]int, blocks voxMap) {
 	imin := pos[0] - tileRadius
 	kmin := pos[2] - tileRadius
+	tileWidth := size / tiles
 	for i := 0; i < tiles; i++ {
 		for k := 0; k < tiles; k++ {
 			if maze[i+imin][k+kmin] == 1 {
-				magica2govox(size, Vec3{20 * i, 0, 20 * k}, wall, blocks)
+				magica2govox(size, Vec3{tileWidth * i, 0, tileWidth * k}, wall, blocks)
 			}
 		}
 	}
@@ -56,7 +57,7 @@ func AddMaze(size int, pos Vec3, wall *voxfile.VoxFile, maze [][]int, blocks vox
 func AddMonster(size int, pos, player Vec3, eye *voxfile.VoxFile, blocks voxMap) {
 	x := pos[0] - player[0] + tileRadius
 	y := pos[2] - player[2] + tileRadius
-	if x*x < 16 && y*y < 16 {
+	if InView(player, pos) {
 		magica2govox(size, Vec3{size / tiles * x, 0, size / tiles * y}, eye, blocks)
 	}
 }
