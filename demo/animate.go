@@ -4,7 +4,7 @@ package main
 import (
 	"math"
 
-	"github.com/donomii/govox"
+	"github.com/donomii/myvox"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
@@ -28,7 +28,7 @@ func rise(size int, blocks voxMap) voxMap {
 
 			for k := 0; k < size; k++ {
 
-				blocks[i][j][k] = govox.Block{
+				blocks[i][j][k] = myvox.Block{
 					Active: false,
 					Color: mgl32.Vec4{
 						float32(math.Mod(float64(i*size*size+j*size+k), 256)) / 256,
