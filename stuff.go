@@ -221,7 +221,6 @@ func StartRender() {
 func FinishRender(window *glfw.Window) {
 	window.SwapBuffers()
 
-	glfw.PollEvents()
 }
 
 var startFrame time.Time
@@ -246,6 +245,7 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 				pointsi := 0
 				coloursi := 0
 				blocks := rd.Blocks
+				offset := float32(size / 2)
 				for i := 0; i < size; i++ {
 					for j := 0; j < size; j++ {
 						for k := 0; k < size; k++ {
@@ -254,28 +254,19 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 								continue
 							}
 
-							//gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
+							fi := float32(i) - float32(size)/2 - offset
+							fj := float32(j) - float32(size)/2 - offset
+							fk := float32(k) - float32(size)/2 - offset
 
-							fi := float32(i) - float32(size)/2
-							fj := float32(j) - float32(size)/2
-							fk := float32(k) - float32(size)/2
-
-							//model1 := model.Mul4(mgl32.Translate3D(fi, fj, fk))
-							//model1 = model1.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
-
-							//gl.UniformMatrix4fv(modelUni, 1, false, &model1[0])
-							//gl.BindVertexArray(rv.Vao)
-							//gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
-
-							offset := float32(size / 2)
-							//log.Println(pointsi)
-							points[pointsi] = fi - offset
+							//Copy voxel locations into VBO
+							points[pointsi] = fi
 							pointsi = pointsi + 1
-							points[pointsi] = fj - offset
+							points[pointsi] = fj
 							pointsi = pointsi + 1
-							points[pointsi] = fk - offset
+							points[pointsi] = fk
 							pointsi = pointsi + 1
-							//points, fi-offset, fj-offset, fk-offset)
+
+							//Copy colours into VBO buffer
 							colours[coloursi] = b.Color.X()
 							coloursi = coloursi + 1
 							colours[coloursi] = b.Color.Y()
@@ -284,10 +275,7 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 							coloursi = coloursi + 1
 							colours[coloursi] = b.Color.W()
 							coloursi = coloursi + 1
-							//Upload position
-							//pos := []float32{fi, fj, fk}
 
-							//gl.DrawElements(gl.POINT, 1, gl.UNSIGNED_SHORT, gl.Ptr(0))
 						}
 					}
 				}
@@ -319,51 +307,42 @@ func RenderBlocks(rv *RenderVars, blocks [][][]Block, rotx, roty float32, size i
 }
 
 func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
-	rd1 := <-readyCh
-	startFrame = time.Now()
+	select {
+	case rd1 := <-readyCh:
+		startFrame = time.Now()
 
-	StartRender()
-	SetCam(size, rv.Program)
+		StartRender()
+		SetCam(size, rv.Program)
 
-	model := mgl32.Ident4()
-	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
-	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-	model = mgl32.HomogRotate3DY(rd1.roty)
-	model = model.Mul4(mgl32.HomogRotate3DX(rd1.rotx))
+		model := mgl32.Ident4()
+		modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+		gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+		model = mgl32.HomogRotate3DY(rd1.roty)
+		model = model.Mul4(mgl32.HomogRotate3DX(rd1.rotx))
 
-	gl.PointSize(8)
+		gl.PointSize(8)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, (rd1.PointsLength)*4, gl.Ptr(rd1.Points), gl.STATIC_DRAW)
+		gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vbo)
+		gl.BufferData(gl.ARRAY_BUFFER, (rd1.PointsLength)*4, gl.Ptr(rd1.Points), gl.STATIC_DRAW)
 
-	gl.EnableVertexAttribArray(rv.VertAttrib)
-	gl.VertexAttribPointer(rv.VertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
+		gl.EnableVertexAttribArray(rv.VertAttrib)
+		gl.VertexAttribPointer(rv.VertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vboc)
-	gl.BufferData(gl.ARRAY_BUFFER, rd1.ColoursLength*4, gl.Ptr(rd1.Colours), gl.STATIC_DRAW)
-	gl.EnableVertexAttribArray(rv.VertAttribc)
-	gl.VertexAttribPointer(rv.VertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+		gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vboc)
+		gl.BufferData(gl.ARRAY_BUFFER, rd1.ColoursLength*4, gl.Ptr(rd1.Colours), gl.STATIC_DRAW)
+		gl.EnableVertexAttribArray(rv.VertAttribc)
+		gl.VertexAttribPointer(rv.VertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
 
-	gl.DrawArrays(gl.POINTS, 0, int32(rd1.PointsLength))
+		gl.DrawArrays(gl.POINTS, 0, int32(rd1.PointsLength))
 
-	FinishRender(window)
+		FinishRender(window)
 
-	log.Println("Drew", rd1.PointsLength, "points in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+		log.Println("Drew", rd1.PointsLength, "points in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 
-	finishCh <- rd1
-
-}
-
-func DrawAny(rv *RenderVars, window *glfw.Window, rotx, roty float32, fi, fj, fk float32, draw_callback func()) {
-	// globals
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-	draw_callback()
-	window.SwapBuffers()
-
-	glfw.PollEvents()
+		finishCh <- rd1
+	default:
+		glfw.PollEvents()
+	}
 
 }
 

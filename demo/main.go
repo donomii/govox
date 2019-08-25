@@ -143,13 +143,13 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 	}
 }
 
-var tiles int = 15
-var tileRadius = 7
+var tiles int = 21
+var tileRadius = 10
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	var size int = 150
+	var size int = 210
 
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
@@ -206,7 +206,7 @@ func main() {
 
 }
 
-var drawBlocks bool = false
+var drawBlocks bool = true
 
 func BlocksWorker(size int, BlocksBuffer voxMap, rv *govox.RenderVars, maze [][]int) {
 	player, err := voxfile.DecodeFile("models/chr_sword.vox")
