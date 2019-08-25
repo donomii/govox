@@ -190,7 +190,8 @@ func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, r
 	model := mgl32.Ident4()
 	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
 	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-
+	model = mgl32.HomogRotate3DY(roty)
+	model = model.Mul4(mgl32.HomogRotate3DX(rotx))
 	for i := 0; i < size; i++ {
 		for j := 0; j < size; j++ {
 			for k := 0; k < size; k++ {
@@ -205,14 +206,16 @@ func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, r
 				fj := float32(j) - float32(size)/2
 				fk := float32(k) - float32(size)/2
 
-				model = mgl32.HomogRotate3DY(roty)
-				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
-				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
-				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
+				model1 := model.Mul4(mgl32.Translate3D(fi, fj, fk))
+				//model1 = model1.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
 
-				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+				gl.UniformMatrix4fv(modelUni, 1, false, &model1[0])
 				gl.BindVertexArray(rv.Vao)
-				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+				//gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+				gl.PointSize(8)
+				gl.DrawArrays(gl.POINTS, 0, 6*2*3)
+
+				//gl.DrawElements(gl.POINT, 1, gl.UNSIGNED_SHORT, gl.Ptr(0))
 			}
 		}
 	}

@@ -91,7 +91,6 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 	lastInputTime2 := time.Now()
 
 	for {
-		glfw.PollEvents()
 		if glfw.Press == 1 {
 			if time.Now().Sub(lastInputTime).Nanoseconds() > 150000000 {
 				lastInputTime = time.Now()
@@ -253,83 +252,6 @@ func ClearDisplay(size int, blocks voxMap) {
 		return b
 	}, blocks)
 }
-func RenderBlocks(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
-	// globals
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-
-	//screenshot("voxeltest.png", 4000, 2000)
-
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	model := mgl32.Ident4()
-	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
-	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			for k := 0; k < size; k++ {
-				b := blocks[i][j][k]
-				if !b.Active {
-					continue
-				}
-
-				gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
-
-				fi := float32(i) - float32(size)/2
-				fj := float32(j) - float32(size)/2
-				fk := float32(k) - float32(size)/2
-
-				model = mgl32.HomogRotate3DY(roty)
-				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
-				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
-				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
-
-				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-				gl.BindVertexArray(rv.Vao)
-				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
-			}
-		}
-	}
-
-	window.SwapBuffers()
-
-}
-
-func RenderLowResBlocks(rv govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, size int) {
-
-	model := mgl32.Ident4()
-	//modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
-	//gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			for k := 0; k < size; k++ {
-				b := blocks[i][j][k]
-				if !b.Active {
-					continue
-				}
-
-				//gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
-
-				fi := float32(i) - float32(size)/2
-				fj := float32(j) - float32(size)/2
-				fk := float32(k) - float32(size)/2
-
-				model = mgl32.HomogRotate3DY(roty)
-				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
-				model = model.Mul4(mgl32.Translate3D(fi, fj, fk))
-				model = model.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
-
-				//gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-				gl.BindVertexArray(rv.Vao)
-				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
-			}
-		}
-	}
-}
 
 func DrawCustom(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, roty float32, fi, fj, fk float32, size int) {
 	im, _ := glim.DrawStringRGBA(20, glim.RGBA{1.0, 1.0, 1.0, 1.0}, fmt.Sprintf("Monsters Remaining: %v", len(monsters)), "Asdfasdf")
@@ -343,7 +265,7 @@ func DrawCustom(rv *govox.RenderVars, window *glfw.Window, blocks voxMap, rotx, 
 
 	govox.DrawAny(rv, window, rotx, roty, fi, fj, fk, func() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		RenderBlocks(rv, window, blocks, rotx, roty, size)
+		//		RenderBlocks(rv, window, blocks, rotx, roty, size)
 		rotx = -3.449998
 		roty = 0.7500001
 		for i := float32(0.0); i < float32(w); i = i + 1.0 {
