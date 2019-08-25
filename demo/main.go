@@ -184,7 +184,7 @@ func main() {
 	xoffset := tileRadius + 1
 	yoffset := tileRadius + 1
 	for y, v := range mapstrs {
-		cols := strings.Split(v, ",")
+		cols := strings.Split(v, "	")
 		for x, v := range cols {
 			//log.Println(x, y)
 			if v == "" {
@@ -198,7 +198,7 @@ func main() {
 		fmt.Printf("\n")
 	}
 
-	PlayerPos = Vec3{30, 0, 35}
+	PlayerPos = Vec3{25, 0, 25}
 
 	go handleKeys(window, maze)
 	go BlocksWorker(size, BlocksBuffer, &rv, maze)

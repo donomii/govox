@@ -136,17 +136,17 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	finishCh = make(chan *RenderData, 2)
 
 	rd := RenderData{}
-	rd.Points = make([]float32, 200000)
+	rd.Points = make([]float32, size*size*size+1)
 	rd.PointsLength = 0
-	rd.Colours = make([]float32, 200000)
+	rd.Colours = make([]float32, size*size*size+1)
 	rd.ColoursLength = 0
 	//rd.Blocks = blocks
 	finishCh <- &rd
 
 	rd = RenderData{}
-	rd.Points = make([]float32, 200000)
+	rd.Points = make([]float32, size*size*size+1)
 	rd.PointsLength = 0
-	rd.Colours = make([]float32, 200000)
+	rd.Colours = make([]float32, size*size*size+1)
 	rd.ColoursLength = 0
 	//rd.Blocks = blocks
 	finishCh <- &rd
@@ -285,8 +285,8 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 				rd.PointsLength = pointsi
 				rd.ColoursLength = coloursi
 				readyCh <- rd
+				log.Println("Prepared", pointsi, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 			}
-			log.Println("Prepared", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 
 		}
 	}()
@@ -312,7 +312,7 @@ func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 		startFrame = time.Now()
 
 		StartRender()
-		SetCam(size/2, rv.Program)
+		SetCam(size/4, rv.Program)
 
 		model := mgl32.Ident4()
 		modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
