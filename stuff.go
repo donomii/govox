@@ -2,6 +2,7 @@ package govox
 
 import (
 	"errors"
+	"time"
 
 	"log"
 	"math/rand"
@@ -130,6 +131,27 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 
 	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
 
+	readyCh = make(chan *RenderData, 2)
+	cycleCh = make(chan *RenderData, 2)
+	finishCh = make(chan *RenderData, 2)
+
+	rd := RenderData{}
+	rd.Points = make([]float32, 200000)
+	rd.PointsLength = 0
+	rd.Colours = make([]float32, 200000)
+	rd.ColoursLength = 0
+	//rd.Blocks = blocks
+	finishCh <- &rd
+
+	rd = RenderData{}
+	rd.Points = make([]float32, 200000)
+	rd.PointsLength = 0
+	rd.Colours = make([]float32, 200000)
+	rd.ColoursLength = 0
+	//rd.Blocks = blocks
+	finishCh <- &rd
+
+	go RenderPrepWorker(size, cycleCh, readyCh)
 	return window, rv
 }
 
@@ -201,60 +223,134 @@ func FinishRender(window *glfw.Window) {
 
 	glfw.PollEvents()
 }
-func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, rotx, roty float32, size int) {
-	blocks := *blocksptr
+
+var startFrame time.Time
+
+type RenderData struct {
+	Points        []float32
+	Colours       []float32
+	ColoursLength int
+	PointsLength  int
+	Blocks        [][][]Block
+	rotx, roty    float32
+}
+
+func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
+	go func() {
+		for {
+			startFrame := time.Now()
+			rd := <-cycleCh
+			if rd.Blocks != nil {
+				points := rd.Points
+				colours := rd.Colours
+				pointsi := 0
+				coloursi := 0
+				blocks := rd.Blocks
+				for i := 0; i < size; i++ {
+					for j := 0; j < size; j++ {
+						for k := 0; k < size; k++ {
+							b := blocks[i][j][k]
+							if !b.Active {
+								continue
+							}
+
+							//gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
+
+							fi := float32(i) - float32(size)/2
+							fj := float32(j) - float32(size)/2
+							fk := float32(k) - float32(size)/2
+
+							//model1 := model.Mul4(mgl32.Translate3D(fi, fj, fk))
+							//model1 = model1.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
+
+							//gl.UniformMatrix4fv(modelUni, 1, false, &model1[0])
+							//gl.BindVertexArray(rv.Vao)
+							//gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+
+							offset := float32(size / 2)
+							//log.Println(pointsi)
+							points[pointsi] = fi - offset
+							pointsi = pointsi + 1
+							points[pointsi] = fj - offset
+							pointsi = pointsi + 1
+							points[pointsi] = fk - offset
+							pointsi = pointsi + 1
+							//points, fi-offset, fj-offset, fk-offset)
+							colours[coloursi] = b.Color.X()
+							coloursi = coloursi + 1
+							colours[coloursi] = b.Color.Y()
+							coloursi = coloursi + 1
+							colours[coloursi] = b.Color.Z()
+							coloursi = coloursi + 1
+							colours[coloursi] = b.Color.W()
+							coloursi = coloursi + 1
+							//Upload position
+							//pos := []float32{fi, fj, fk}
+
+							//gl.DrawElements(gl.POINT, 1, gl.UNSIGNED_SHORT, gl.Ptr(0))
+						}
+					}
+				}
+
+				rd.Points = points
+				rd.Colours = colours
+				rd.PointsLength = pointsi
+				rd.ColoursLength = coloursi
+				readyCh <- rd
+			}
+			log.Println("Prepared", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+
+		}
+	}()
+}
+
+var readyCh chan *RenderData
+var cycleCh chan *RenderData
+var finishCh chan *RenderData
+
+func RenderBlocks(rv *RenderVars, blocks [][][]Block, rotx, roty float32, size int) {
+
+	rd := <-finishCh
+	rd.Blocks = blocks
+	rd.roty = roty
+	rd.rotx = rotx
+	cycleCh <- rd
+
+}
+
+func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
+	rd1 := <-readyCh
+	startFrame = time.Now()
+
+	StartRender()
+	SetCam(size, rv.Program)
 
 	model := mgl32.Ident4()
 	modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
 	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
-	model = mgl32.HomogRotate3DY(roty)
-	model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+	model = mgl32.HomogRotate3DY(rd1.roty)
+	model = model.Mul4(mgl32.HomogRotate3DX(rd1.rotx))
 
-	points := []float32{}
-	colours := []float32{}
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			for k := 0; k < size; k++ {
-				b := blocks[i][j][k]
-				if !b.Active {
-					continue
-				}
+	gl.PointSize(8)
 
-				gl.Uniform4fv(rv.ColUni, 1, &b.Color[0])
-
-				fi := float32(i) - float32(size)/2
-				fj := float32(j) - float32(size)/2
-				fk := float32(k) - float32(size)/2
-
-				model1 := model.Mul4(mgl32.Translate3D(fi, fj, fk))
-				//model1 = model1.Mul4(mgl32.Scale3D(0.5, 0.5, 0.5))
-
-				gl.UniformMatrix4fv(modelUni, 1, false, &model1[0])
-				gl.BindVertexArray(rv.Vao)
-				//gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
-				gl.PointSize(8)
-				offset := float32(size / 2)
-				points = append(points, fi-offset, fj-offset, fk-offset)
-				colours = append(colours, b.Color.X(), b.Color.Y(), b.Color.Z(), b.Color.Y())
-				//Upload position
-				//pos := []float32{fi, fj, fk}
-
-				//gl.DrawElements(gl.POINT, 1, gl.UNSIGNED_SHORT, gl.Ptr(0))
-			}
-		}
-	}
 	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, len(points)*4, gl.Ptr(points), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, (rd1.PointsLength)*4, gl.Ptr(rd1.Points), gl.STATIC_DRAW)
 
 	gl.EnableVertexAttribArray(rv.VertAttrib)
 	gl.VertexAttribPointer(rv.VertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vboc)
-	gl.BufferData(gl.ARRAY_BUFFER, len(colours)*4, gl.Ptr(colours), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, rd1.ColoursLength*4, gl.Ptr(rd1.Colours), gl.STATIC_DRAW)
 	gl.EnableVertexAttribArray(rv.VertAttribc)
 	gl.VertexAttribPointer(rv.VertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
 
-	gl.DrawArrays(gl.POINTS, 0, int32(len(points)))
+	gl.DrawArrays(gl.POINTS, 0, int32(rd1.PointsLength))
+
+	FinishRender(window)
+
+	log.Println("Drew", rd1.PointsLength, "points in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+
+	finishCh <- rd1
 
 }
 
