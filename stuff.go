@@ -237,8 +237,9 @@ type RenderData struct {
 func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 	go func() {
 		for {
-			startFrame := time.Now()
+
 			rd := <-cycleCh
+			startFrame := time.Now()
 			if rd.Blocks != nil {
 				points := rd.Points
 				colours := rd.Colours
@@ -249,6 +250,7 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 				for i := 0; i < size; i++ {
 					for j := 0; j < size; j++ {
 						for k := 0; k < size; k++ {
+
 							b := blocks[i][j][k]
 							if !b.Active {
 								continue

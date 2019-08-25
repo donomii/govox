@@ -150,7 +150,7 @@ var tileRadius = 10
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	var size int = 105
+	var size int = 210
 
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
@@ -219,7 +219,8 @@ func BlocksWorker(size int, BlocksBuffer voxMap, rv *govox.RenderVars, maze [][]
 	eye, _ := voxfile.DecodeFile("models/eye.vox")
 	for {
 		startFrame := time.Now()
-		ClearDisplay(size, BlocksBuffer)
+		//ClearDisplay(size, BlocksBuffer)
+		BlocksBuffer = govox.MakeBlocks(size)
 		//ClearDisplay(size/5, LowResBlocks)
 		//AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
 
@@ -245,15 +246,13 @@ func BlocksWorker(size int, BlocksBuffer voxMap, rv *govox.RenderVars, maze [][]
 		//		gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 
 		//screenshot("voxeltest.png", 4000, 2000)
-
+		log.Println("Calculated ", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 		govox.RenderBlocks(rv, BlocksBuffer, rotx, roty, int(size))
 		//govox.SetCam(size/5, rv.Program)
 		//govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
 
 		//AddFourier(size, BlocksBuffer)
 		//DrawCustom(rv, window, BlocksBuffer, rotx, roty, 0, 0, 0, size)
-
-		log.Println("Calculated ", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 
 	}
 }
