@@ -1,6 +1,9 @@
 package main
 
 import (
+	"io/ioutil"
+	"strings"
+
 	//	"math"
 
 	"fmt"
@@ -19,6 +22,8 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
+
+var roty, rotx float32
 
 type RenderVars struct {
 	//Col        mgl32.Vec4
@@ -82,8 +87,6 @@ func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
 	*/
 }
 
-var roty, rotx float32
-
 func handleKeys(window *glfw.Window, maze [][]int) {
 	lastInputTime := time.Now()
 	lastInputTime2 := time.Now()
@@ -108,10 +111,8 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 				if moveOk(wantPos, maze) {
 					PlayerPos = wantPos
 				} else {
-					//log.Println("Move not ok")
 					monsters = handleCollision(PlayerPos, wantPos)
 				}
-				//log.Printf("Player: %v\n", PlayerPos)
 
 			}
 			if time.Now().Sub(lastInputTime2).Nanoseconds() > 15000000 {
@@ -149,7 +150,7 @@ var tileRadius = 10
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	var size int = 210
+	var size int = 105
 
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
@@ -162,9 +163,6 @@ func main() {
 	}
 	InitGame(size)
 	window, rv := govox.InitGraphics(size, 1900, 1000)
-	//BlocksBuffer := govox.MakeBlocks(int(size))
-
-	//	blocks := makeBlocks(int(size))
 
 	lifeBlocks = make([]bool, int(size*size*size))
 	Actrs = []Actor{
@@ -177,26 +175,31 @@ func main() {
 	}
 
 	BlocksBuffer := govox.MakeBlocks(int(size))
-	//LowResBlocks := govox.MakeBlocks(int(size) / 5)
-	/*
-		go func() {
-			for {
-				lifeBlocks = cycle(int(size), lifeBlocks, true)
-				time.Sleep(1 * time.Second)
+
+	maze := GenerateMaze(125, 125)
+
+	raw, _ := ioutil.ReadFile("map.tsv")
+	mapstr := string(raw)
+	mapstrs := strings.Split(mapstr, "\n")
+	xoffset := tileRadius + 1
+	yoffset := tileRadius + 1
+	for y, v := range mapstrs {
+		cols := strings.Split(v, ",")
+		for x, v := range cols {
+			//log.Println(x, y)
+			if v == "" {
+				maze[y+yoffset][x+xoffset] = 1
+				fmt.Printf("*")
+			} else {
+				maze[y+yoffset][x+xoffset] = 0
+				fmt.Printf(" ")
 			}
-		}()
-	*/
+		}
+		fmt.Printf("\n")
+	}
 
-	maze := GenerateMaze(300)
-	middle := 150
-	PlayerPos = Vec3{middle, 0, middle}
+	PlayerPos = Vec3{30, 0, 35}
 
-	//	angle := 0.0
-	//previousTime := glfw.GetTime()
-	//	texture, err := govox.NewTexture("square.png")
-	//if err != nil {
-	///	log.Fatalln(err)
-	//}
 	go handleKeys(window, maze)
 	go BlocksWorker(size, BlocksBuffer, &rv, maze)
 	for !window.ShouldClose() {
@@ -222,11 +225,11 @@ func BlocksWorker(size int, BlocksBuffer voxMap, rv *govox.RenderVars, maze [][]
 
 		if drawBlocks {
 			AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
-			AddFloor(size, maze, BlocksBuffer)
-			DrawPlayer(size, PlayerPos, BlocksBuffer)
+			//DrawAbstractMaze(size, maze, BlocksBuffer)
+			//DrawPlayer(size, PlayerPos, BlocksBuffer)
 			magica2govox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, BlocksBuffer)
 			for _, m := range monsters {
-				DrawMonster(size, m, BlocksBuffer)
+				//DrawMonster(size, m, BlocksBuffer)
 				AddMonster(size, m, PlayerPos, eye, BlocksBuffer)
 			}
 		}

@@ -312,14 +312,14 @@ func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 		startFrame = time.Now()
 
 		StartRender()
-		SetCam(size, rv.Program)
+		SetCam(size/2, rv.Program)
 
 		model := mgl32.Ident4()
 		modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
-		gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+
 		model = mgl32.HomogRotate3DY(rd1.roty)
 		model = model.Mul4(mgl32.HomogRotate3DX(rd1.rotx))
-
+		gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 		gl.PointSize(8)
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vbo)
@@ -343,6 +343,7 @@ func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 	default:
 		glfw.PollEvents()
 	}
+	glfw.PollEvents()
 
 }
 

@@ -3,7 +3,6 @@ package main
 
 import (
 	"math/rand"
-
 	//"time"
 )
 
@@ -66,12 +65,12 @@ func moveOk(pos Vec3, maze [][]int) bool {
 	//return !blocks[pos[0]][pos[1]][pos[2]].Active
 }
 
-func GenerateMaze(size int) [][]int {
-	grid := make([][]int, size)
-	for i := 0; i < size; i++ {
+func GenerateMaze(x, y int) [][]int {
+	grid := make([][]int, y)
+	for i := 0; i < y; i++ {
 		var row []int
-		for j := 0; j < size; j++ {
-			row = append(row, rand.Intn(5))
+		for j := 0; j < x; j++ {
+			row = append(row, 1)
 		}
 		grid[i] = row
 	}
