@@ -9,9 +9,13 @@ uniform mat4 camera;
 uniform mat4 model;
 
 in vec3 vert;
+in vec4 colour;
+
+out vec4 pointcol;
 
 void main() {
 	gl_Position = projection * camera * model * vec4(vert, 1);
+	pointcol = colour;
 }
 ` + "\x00"
 
@@ -19,11 +23,11 @@ void main() {
 #version 330
 
 uniform vec4 col;
-
+in vec4 pointcol;
 out vec4 outputColor;
 
 void main() {
-	outputColor = col;
+	outputColor = pointcol;
 }
 ` + "\x00"
 )

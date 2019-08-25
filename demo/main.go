@@ -110,10 +110,10 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 				if moveOk(wantPos, maze) {
 					PlayerPos = wantPos
 				} else {
-					log.Println("Move not ok")
+					//log.Println("Move not ok")
 					monsters = handleCollision(PlayerPos, wantPos)
 				}
-				log.Printf("Player: %v\n", PlayerPos)
+				//log.Printf("Player: %v\n", PlayerPos)
 
 			}
 			if time.Now().Sub(lastInputTime2).Nanoseconds() > 15000000 {
@@ -145,8 +145,8 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 	}
 }
 
-var tiles int = 21
-var tileRadius = 10
+var tiles int = 15
+var tileRadius = 7
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -156,7 +156,7 @@ func main() {
 	wall, _ := voxfile.DecodeFile("models/wall5.vox")
 	eye, _ := voxfile.DecodeFile("models/eye.vox")
 
-	var size int = 105
+	var size int = 150
 
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
@@ -211,7 +211,7 @@ func main() {
 		ClearDisplay(size/5, LowResBlocks)
 		//AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
 		AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
-		AddFloor(size, maze, BlocksBuffer)
+		//AddFloor(size, maze, BlocksBuffer)
 		DrawPlayer(size, PlayerPos, BlocksBuffer)
 		magica2govox(size, Vec3{2 * size / 5, 0, 2 * size / 5}, player, BlocksBuffer)
 		for _, m := range monsters {

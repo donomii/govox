@@ -18,12 +18,15 @@ type Block struct {
 	Color  mgl32.Vec4
 }
 type RenderVars struct {
-	Col        mgl32.Vec4
-	ColUni     int32
-	Vao        uint32
-	Vbo        uint32
-	VertAttrib uint32
-	Program    uint32
+	Col         mgl32.Vec4
+	ColUni      int32
+	Vao         uint32
+	Vbo         uint32
+	VertAttrib  uint32
+	Vaoc        uint32
+	Vboc        uint32
+	VertAttribc uint32
+	Program     uint32
 }
 
 var BlocksBuffer [][][]Block
@@ -109,7 +112,21 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	gl.EnableVertexAttribArray(vertAttrib)
 	gl.VertexAttribPointer(vertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 
-	rv := RenderVars{col, colUni, vao, vbo, vertAttrib, p}
+	// Colour data
+	var vaoc uint32
+	gl.GenVertexArrays(1, &vaoc)
+	gl.BindVertexArray(vaoc)
+
+	var vboc uint32
+	gl.GenBuffers(1, &vboc)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vboc)
+	gl.BufferData(gl.ARRAY_BUFFER, len(cubeVerts)*4, gl.Ptr(cubeVerts), gl.STATIC_DRAW)
+
+	vertAttribc := uint32(gl.GetAttribLocation(p, gl.Str("colour\x00")))
+	gl.EnableVertexAttribArray(vertAttribc)
+	gl.VertexAttribPointer(vertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+
+	rv := RenderVars{col, colUni, vao, vbo, vertAttrib, vaoc, vboc, vertAttribc, p}
 
 	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
 
@@ -192,6 +209,9 @@ func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, r
 	gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 	model = mgl32.HomogRotate3DY(roty)
 	model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+
+	points := []float32{}
+	colours := []float32{}
 	for i := 0; i < size; i++ {
 		for j := 0; j < size; j++ {
 			for k := 0; k < size; k++ {
@@ -213,12 +233,28 @@ func RenderBlocks(rv *RenderVars, window *glfw.Window, blocksptr *[][][]Block, r
 				gl.BindVertexArray(rv.Vao)
 				//gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
 				gl.PointSize(8)
-				gl.DrawArrays(gl.POINTS, 0, 6*2*3)
+				offset := float32(size / 2)
+				points = append(points, fi-offset, fj-offset, fk-offset)
+				colours = append(colours, b.Color.X(), b.Color.Y(), b.Color.Z(), b.Color.Y())
+				//Upload position
+				//pos := []float32{fi, fj, fk}
 
 				//gl.DrawElements(gl.POINT, 1, gl.UNSIGNED_SHORT, gl.Ptr(0))
 			}
 		}
 	}
+	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, len(points)*4, gl.Ptr(points), gl.STATIC_DRAW)
+
+	gl.EnableVertexAttribArray(rv.VertAttrib)
+	gl.VertexAttribPointer(rv.VertAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, rv.Vboc)
+	gl.BufferData(gl.ARRAY_BUFFER, len(colours)*4, gl.Ptr(colours), gl.STATIC_DRAW)
+	gl.EnableVertexAttribArray(rv.VertAttribc)
+	gl.VertexAttribPointer(rv.VertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+
+	gl.DrawArrays(gl.POINTS, 0, int32(len(points)))
 
 }
 
