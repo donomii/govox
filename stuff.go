@@ -2,17 +2,28 @@ package govox
 
 import (
 	"errors"
-	"time"
-
+	"fmt"
 	"log"
 	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/donomii/glim"
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
+
+var startFrame time.Time
+
+type RenderData struct {
+	Points        []float32
+	Colours       []float32
+	ColoursLength int
+	PointsLength  int
+	Blocks        [][][]Block
+	rotx, roty    float32
+}
 
 type Block struct {
 	Active bool
@@ -223,23 +234,12 @@ func FinishRender(window *glfw.Window) {
 
 }
 
-var startFrame time.Time
-
-type RenderData struct {
-	Points        []float32
-	Colours       []float32
-	ColoursLength int
-	PointsLength  int
-	Blocks        [][][]Block
-	rotx, roty    float32
-}
-
 func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 	go func() {
 		for {
 
 			rd := <-cycleCh
-			startFrame := time.Now()
+			//startFrame := time.Now()
 			if rd.Blocks != nil {
 				points := rd.Points
 				colours := rd.Colours
@@ -287,7 +287,7 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 				rd.PointsLength = pointsi
 				rd.ColoursLength = coloursi
 				readyCh <- rd
-				log.Println("Prepared", pointsi, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+				//log.Println("Prepared", pointsi, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 			}
 
 		}
@@ -308,12 +308,59 @@ func RenderBlocks(rv *RenderVars, blocks [][][]Block, rotx, roty float32, size i
 
 }
 
+func DrawText(size int, rv *RenderVars, window *glfw.Window, monstersRemaining int) {
+	im, _ := glim.DrawStringRGBA(20, glim.RGBA{1.0, 1.0, 1.0, 1.0}, fmt.Sprintf("Monsters Remaining: %v", monstersRemaining), "Asdfasdf")
+	pic, w, h := glim.GFormatToImage(im, nil, 0, 0)
+	//log.Printf("Rotx: %v, roty: %v\n", rotx, roty)
+	//glim.DumpBuff(pic, uint(w), uint(h))
+	/*pic := glim.RandPic(20, 20)
+	  w := 20
+	  h := 20*/
+	scale := float32(5.0)
+
+	//gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	//              RenderBlocks(rv, window, blocks, rotx, roty, size)
+
+	SetCam(size/4, rv.Program)
+
+	rotx := float32(-3.449998)
+	roty := float32(0.7500001)
+	fi := float32(0.0)
+	fj := float32(0.0)
+	fk := float32(0.0)
+	for i := float32(0.0); i < float32(w); i = i + 1.0 {
+		for j := float32(0.0); j < float32(h); j = j + 1.0 {
+			if pic[4*(int(i)+int(j)*int(w))] > 0 {
+
+				model := mgl32.Ident4()
+				modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+
+				//screenshot("voxeltest.png", 4000, 2000)
+
+				//Color := mgl32.Vec4{1.0, 0.0, 0.0, 1.0}
+				//gl.Uniform4fv(rv.ColUni, 1, &Color[0])
+				model = mgl32.HomogRotate3DY(roty)
+				model = model.Mul4(mgl32.HomogRotate3DX(rotx))
+				model = model.Mul4(mgl32.Scale3D(scale, scale, scale))
+				model = model.Mul4(mgl32.Translate3D(fi+i, fj+j, fk))
+
+				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
+				gl.BindVertexArray(rv.Vao)
+				gl.DrawArrays(gl.TRIANGLES, 0, 6*2*3)
+			}
+		}
+	}
+
+}
+
 func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 	select {
 	case rd1 := <-readyCh:
 		startFrame = time.Now()
 
 		StartRender()
+		//DrawText(size, rv, window, 5)
 		SetCam(size/4, rv.Program)
 
 		model := mgl32.Ident4()
@@ -339,7 +386,7 @@ func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 
 		FinishRender(window)
 
-		log.Println("Drew", rd1.PointsLength, "points in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+		//log.Println("Drew", rd1.PointsLength, "points in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 
 		finishCh <- rd1
 	default:

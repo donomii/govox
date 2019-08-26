@@ -8,6 +8,8 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+//blocks := lifeBlocks2Blocks(int(size), lifeBlocks, nil)
+
 func countNeighbours(pos, size int, lifeBlocks []bool) int {
 	var out int
 	for i := -1; i < 2; i = i + 1 {

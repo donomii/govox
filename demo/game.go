@@ -1,17 +1,29 @@
 // game.go
 package main
 
-import (
-	"math/rand"
-	//"time"
-)
+//"math/rand"
+//"time"
 
 var monsters []Vec3
 
-func InitGame(size int) {
-	for i := 0; i < 5; i++ {
-		monsters = append(monsters, Vec3{rand.Intn(size), 0, rand.Intn(size)})
-	}
+func InitGame(size int, maze [][]int) {
+
+	/*
+		for monsters := []Vec3{}; len(monsters) < 5; monsters = monsters {
+			pos := Vec3{rand.Intn(50), 0, rand.Intn(70)}
+
+			if moveOk(pos, maze) {
+			monsters = append(monsters, pos)
+			}
+		}
+	*/
+
+	monsters = append(monsters, Vec3{21, 0, 14})
+	monsters = append(monsters, Vec3{37, 0, 19})
+	monsters = append(monsters, Vec3{20, 0, 26})
+	monsters = append(monsters, Vec3{35, 0, 22})
+	monsters = append(monsters, Vec3{27, 0, 16})
+
 }
 
 func handleCollision(pl, other Vec3) []Vec3 {
