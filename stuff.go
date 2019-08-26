@@ -14,6 +14,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+var showTimings = true
 var startFrame time.Time
 
 type RenderData struct {
@@ -239,7 +240,9 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 		for {
 
 			rd := <-cycleCh
-			//startFrame := time.Now()
+
+			startFrame := time.Now()
+
 			if rd.Blocks != nil {
 				points := rd.Points
 				colours := rd.Colours
@@ -287,7 +290,9 @@ func RenderPrepWorker(size int, cycleCh, readyCh chan *RenderData) {
 				rd.PointsLength = pointsi
 				rd.ColoursLength = coloursi
 				readyCh <- rd
-				//log.Println("Prepared", pointsi, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+				if showTimings {
+					log.Println("Prepared", pointsi, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+				}
 			}
 
 		}
