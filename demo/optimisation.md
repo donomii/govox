@@ -28,11 +28,11 @@ To be clear, a modern graphics card can easily draw a million cubes, but it can'
 
 
 Code                                      | Gl Draw | graphics prep | voxel prep
-Initial implementation*                   | 600     |  0            | 0
+Initial implementation(!)                   | 600     |  0            | 0
 Multithreaded drawarrays  slow laptop     | 21      | 23            | 302 
 Multithreaded drawarrays  fast laptop     | 1       | 10            | 220
 
-*  There is only one stage in the initial implementation, everything was mixed together in the one loop.
+!  There is only one stage in the initial implementation, everything was mixed together in the one loop.
 
 I split the 600ms loop into three loops, and while one of them takes 300ms to run, the other two take almost no time at all.  That was a surprise to me.  The graphics card is clearly more than capable, even on my old slow laptop.  The trouble is with the CPU, dealing with the large number of blocks.
 
@@ -43,3 +43,12 @@ So now, the challenge is to speed up the CPU voxel handling.
 Unfortunately for this article, it turned out to be trivially simple.  In the voxel prep, I was looping over all 9 million voxels and setting them to inactive, each frame.  It turns out golang is not particularly fast at assigning to arrays, so it was taking around 200ms to clear the voxel array.  In fact, it was much faster to reallocate the array than it was to clear it, so that's what I did.
 
 There are some fast routines in the C library for clearing memory, so later on I will investigate the best way to speed this up.  For now though, it is good enough.
+
+Code                                      | Gl Draw | graphics prep | voxel prep
+Initial implementation                    | 600     |  0            | 0
+Multithreaded drawarrays  slow laptop     | 21      | 23            | 302 
+Multithreaded drawarrays  fast laptop     | 6       | 10            | 220
+MT + allocs  slow laptop                  |         |               |     
+MT + allocs  fast laptop                  | 16      | 10            | 15
+
+I have no idea why the Gl Draw thread is now the slowest part of the whole process.  Certainly something to look into.  

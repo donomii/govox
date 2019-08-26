@@ -291,7 +291,7 @@ func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int) {
 	monster := LoadVox("models/monster.vox")
 	voxFlipY(monster)
 	for {
-		//startFrame := time.Now()
+		startFrame := time.Now()
 		//ClearDisplay(size, BlocksBuffer)
 		BlocksBuffer := govox.MakeBlocks(size)
 		AddText(size, BlocksBuffer)
@@ -311,7 +311,9 @@ func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int) {
 		//BlocksBuffer = rise(int(size), BlocksBuffer)
 
 		//screenshot("voxeltest.png", 4000, 2000)
-		//log.Println("Calculated ", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+		if govox.ShowTimings {
+			log.Println("Calculated ", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
+		}
 		govox.RenderBlocks(rv, BlocksBuffer, rotx, roty, int(size))
 		//govox.SetCam(size/5, rv.Program)
 		//govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
