@@ -29,12 +29,12 @@ To be clear, a modern graphics card can easily draw a million cubes, but it can'
 
 Code                                      | Gl Draw | graphics prep | voxel prep
 Initial implementation*                   | 600     |  0            | 0
-Multithreaded drawarrays  slow laptop     | 21      | 300           | 302 
-Multithreaded drawarrays  fast laptop     | 1       | 23            | 220
+Multithreaded drawarrays  slow laptop     | 21      | 23            | 302 
+Multithreaded drawarrays  fast laptop     | 1       | 10            | 220
 
-*  There is only one stage in the initial implementation, everything was mixed together in the one loop
+*  There is only one stage in the initial implementation, everything was mixed together in the one loop.
 
-This makes sense.  I split the 600ms loop into three loops, and two of them take 300ms to run, while the third takes almost no time at all.  That was a surprise to me.  The graphics card is clearly more than capable, even on my old slow laptop.  The trouble is with the CPU, dealing with the large number of blocks.
+I split the 600ms loop into three loops, and while one of them takes 300ms to run, the other two take almost no time at all.  That was a surprise to me.  The graphics card is clearly more than capable, even on my old slow laptop.  The trouble is with the CPU, dealing with the large number of blocks.
 
 Despite that, I made one additional improvement.  Instead of drawing cubes, I draw points.  so it is rendering a point cloud instead of voxels.  Provided the points are wide enough, this works nicely, and is almost indistinguishable from cubes.
 
@@ -42,4 +42,4 @@ So now, the challenge is to speed up the CPU voxel handling.
 
 Unfortunately for this article, it turned out to be trivially simple.  In the voxel prep, I was looping over all 9 million voxels and setting them to inactive, each frame.  It turns out golang is not particularly fast at assigning to arrays, so it was taking around 200ms to clear the voxel array.  In fact, it was much faster to reallocate the array than it was to clear it, so that's what I did.
 
-There are some fast routines in the C library for clearing memory, so later on I will investigate the best way to speed this up.  For now though, it 
+There are some fast routines in the C library for clearing memory, so later on I will investigate the best way to speed this up.  For now though, it is good enough.
