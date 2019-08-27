@@ -47,8 +47,8 @@ There are some fast routines in the C library for clearing memory, so later on I
 Code                                      | Gl Draw | graphics prep | voxel prep
 Initial implementation                    | 600     |  0            | 0
 Multithreaded drawarrays  slow laptop     | 21      | 23            | 302 
-Multithreaded drawarrays  fast laptop     | 6       | 10            | 220
-MT + allocs  slow laptop                  |         |               |     
+Multithreaded drawarrays  fast laptop     | 10      | 10            | 220
+MT + allocs  slow laptop                  | 17      | 14            | 17  
 MT + allocs  fast laptop                  | 16      | 10            | 15
 
-I have no idea why the Gl Draw thread is now the slowest part of the whole process.  Certainly something to look into.  
+I have no idea why the Gl Draw thread is now the slowest part of the whole process.  Certainly something to look into.  The numbers for the graphics card are bouncing around all over the place, going from 0-22.
