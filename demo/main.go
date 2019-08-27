@@ -297,10 +297,3 @@ func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int) {
 
 	}
 }
-
-func ClearDisplay(size int, blocks voxMap) {
-	mapBlock(size, func(b govox.Block, i, j, k int) govox.Block {
-		b.Active = false
-		return b
-	}, blocks)
-}

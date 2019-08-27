@@ -2,6 +2,7 @@
 package main
 
 import (
+	"github.com/donomii/govox"
 	"github.com/tbogdala/Voxfile"
 )
 
