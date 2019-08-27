@@ -28,22 +28,10 @@ var finalLockout time.Time
 var mode = "game"
 var roty, rotx float32
 
-type RenderVars struct {
-	//Col        mgl32.Vec4
-	//ColUni     int32
-	Vao        uint32
-	Vbo        uint32
-	VertAttrib uint32
-	Program    uint32
-}
+var textOffset = 300
 
 func init() {
 	runtime.LockOSThread()
-}
-
-type block struct {
-	active bool
-	color  mgl32.Vec4
 }
 
 var saveCount int = 1
@@ -90,23 +78,13 @@ func magica2govox(sizei int, pos Vec3, vox *voxfile.VoxFile, blocks voxMap) {
 	y := uint8(pos[1])
 	z := uint8(pos[2])
 	for _, v := range vox.Voxels {
-		//log.Printf("%+v,%v,%v,%v\n", v, x, y, z)
 
 		blocks[v.X+x][v.Z+y][v.Y+z].Active = true
-		blocks[v.X+x][v.Z+y][v.Y+z].Color = palette[v.Index]
+		blocks[v.X+x][v.Z+y][v.Y+z].Color = mgl32.Vec4{float32(vox.Palette[v.Index].R) / 255, float32(vox.Palette[v.Index].G) / 255, float32(vox.Palette[v.Index].B) / 255, 1.0}
+		//blocks[v.X+x][v.Z+y][v.Y+z].Color = palette[v.Index]
 
 	}
-	/*
-		size := uint32(sizei)
-		for i := uint32(0); i < vox.SizeX && i < size; i++ {
-			for j := uint32(0); j < vox.SizeY && j < size; j++ {
-				for k := uint32(0); k < vox.SizeZ && k < size; k++ {
-					log.Println(i, j, k)
-					blocks[i][j][k].Active = vox.Voxels[k*vox.SizeX*vox.SizeY+j*vox.SizeX+i].Index > 0
-				}
-			}
-		}
-	*/
+
 }
 
 func handleKeys(window *glfw.Window, maze [][]int) {
@@ -150,7 +128,7 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 			if time.Now().Sub(lastInputTime2).Nanoseconds() > 15000000 {
 				lastInputTime2 = time.Now()
 
-				// check inputs
+				// Rotate view
 				if window.GetKey(glfw.KeyA) == glfw.Press {
 					roty -= 0.05
 				}
@@ -193,6 +171,7 @@ func main() {
 func InitAll(size int, maze [][]int) {
 	mode = "game"
 
+	//FIXME use standard magicavox palette
 	palette = make([]mgl32.Vec4, 2000)
 	for i := 0; i < 2000; i++ {
 		palette[i] = mgl32.Vec4{
@@ -244,15 +223,10 @@ func LoadVox(file string) *voxfile.VoxFile {
 	player, err := voxfile.DecodeFile(file)
 	if err != nil {
 		log.Println(err)
-		//panic(err)
 	}
 	log.Println("Loaded character with size ", player.SizeX, player.SizeY, player.SizeZ)
 	return player
 }
-
-var textOffset = 300
-
-//fmt.Sprintf("Monsters Remaining: %v", monstersRemaining)
 
 func AddText(size int, blocks voxMap) {
 	message := "Kill them all"
