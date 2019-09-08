@@ -10,4 +10,4 @@ before_install:
 install:
   - go get github.com/donomii/govox
 script:
-  - go build .
+  - go build github.com/donomii/govox/demo
