@@ -14,7 +14,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-var ShowTimings = false
+var ShowTimings = true
 var startFrame time.Time
 
 type RenderData struct {
@@ -33,6 +33,7 @@ type Block struct {
 type RenderVars struct {
 	Col         mgl32.Vec4
 	ColUni      int32
+	ModelUni    int32
 	Vao         uint32
 	Vbo         uint32
 	VertAttrib  uint32
@@ -109,6 +110,7 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	SetCam(size, p)
 	col := mgl32.Vec4{0, 0, 0, 1}
 	colUni := gl.GetUniformLocation(p, gl.Str("col\x00"))
+	modelUni := gl.GetUniformLocation(p, gl.Str("model\x00"))
 	gl.Uniform4fv(colUni, 1, &col[0])
 
 	// Vertex data
@@ -139,7 +141,7 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	gl.EnableVertexAttribArray(vertAttribc)
 	gl.VertexAttribPointer(vertAttribc, 4, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
 
-	rv := RenderVars{col, colUni, vao, vbo, vertAttrib, vaoc, vboc, vertAttribc, p}
+	rv := RenderVars{col, colUni, modelUni, vao, vbo, vertAttrib, vaoc, vboc, vertAttribc, p}
 
 	gl.BindFragDataLocation(p, 0, gl.Str("outputColor\x00"))
 
@@ -338,7 +340,7 @@ func DrawText(size int, rv *RenderVars, window *glfw.Window, monstersRemaining i
 			if pic[4*(int(i)+int(j)*int(w))] > 0 {
 
 				model := mgl32.Ident4()
-				modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+				modelUni := rv.ModelUni
 				gl.UniformMatrix4fv(modelUni, 1, false, &model[0])
 
 				//screenshot("voxeltest.png", 4000, 2000)
@@ -369,7 +371,7 @@ func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 		SetCam(size/4, rv.Program)
 
 		model := mgl32.Ident4()
-		modelUni := gl.GetUniformLocation(rv.Program, gl.Str("model\x00"))
+		modelUni := rv.ModelUni
 
 		model = mgl32.HomogRotate3DY(rd1.roty)
 		model = model.Mul4(mgl32.HomogRotate3DX(rd1.rotx))
