@@ -2,6 +2,7 @@
 package main
 
 import (
+	"github.com/donomii/govox"
 	"github.com/tbogdala/Voxfile"
 )
 
@@ -24,4 +25,11 @@ func AddMonster(size int, pos, player Vec3, eye *voxfile.VoxFile, blocks voxMap)
 	if InView(player, pos) {
 		magica2govox(size, Vec3{size / tiles * x, 0, size / tiles * y}, eye, blocks)
 	}
+}
+
+func ClearDisplay(size int, blocks voxMap) {
+	mapBlock(size, func(b govox.Block, i, j, k int) govox.Block {
+		b.Active = false
+		return b
+	}, blocks)
 }

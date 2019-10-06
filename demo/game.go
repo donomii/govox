@@ -45,9 +45,9 @@ func InView(ppos, tpos Vec3) bool {
 	scrPos[1] = (tpos[1] - ppos[1]) * (tpos[1] - ppos[1])
 	scrPos[2] = (tpos[2] - ppos[2]) * (tpos[2] - ppos[2])
 
-	if scrPos[0] < tiles*tiles {
-		if scrPos[1] < tiles*tiles {
-			if scrPos[2] < tiles*tiles {
+	if scrPos[0] < tileRadius*tileRadius {
+		if scrPos[1] < tileRadius*tileRadius {
+			if scrPos[2] < tileRadius*tileRadius {
 				return true
 			}
 		}
