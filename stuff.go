@@ -14,7 +14,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-var ShowTimings = true
+var ShowTimings = false
 var startFrame time.Time
 
 type RenderData struct {
@@ -56,6 +56,19 @@ func Screenshot(filename string, width, height int) {
 	saveCount += 1
 	glim.SaveBuff(int(width), int(height), data, filename)
 
+}
+
+var runGlCh chan func()
+
+func RunGL(f func()) {
+	runGlCh <- f
+}
+
+func runGLWorker() {
+	for len(runGlCh) > 0 {
+		f := <-runGlCh
+		f()
+	}
 }
 
 func ScreenshotBuff(width, height int) []byte {
@@ -148,6 +161,7 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	readyCh = make(chan *RenderData, 2)
 	cycleCh = make(chan *RenderData, 2)
 	finishCh = make(chan *RenderData, 2)
+	runGlCh = make(chan func())
 
 	rd := RenderData{}
 	rd.Points = make([]float32, size*size*size+1)
@@ -158,9 +172,9 @@ func InitGraphics(size int, width, height int) (*glfw.Window, RenderVars) {
 	finishCh <- &rd
 
 	rd = RenderData{}
-	rd.Points = make([]float32, size*size*size+1)
+	rd.Points = make([]float32, 3*size*size*size+1)
 	rd.PointsLength = 0
-	rd.Colours = make([]float32, size*size*size+1)
+	rd.Colours = make([]float32, 4*size*size*size+1)
 	rd.ColoursLength = 0
 	//rd.Blocks = blocks
 	finishCh <- &rd
@@ -223,8 +237,13 @@ func StartRender() {
 	// globals
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
+
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
 	//gl.ClearColor(0.8, 0.8, 1.0, 1.0)
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	//gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
 
 	//screenshot("voxeltest.png", 4000, 2000)
 
@@ -305,13 +324,19 @@ var readyCh chan *RenderData
 var cycleCh chan *RenderData
 var finishCh chan *RenderData
 
-func RenderBlocks(rv *RenderVars, blocks [][][]Block, rotx, roty float32, size int) {
+func RenderBlocks(rv *RenderVars, blocks [][][]Block, rotx, roty float32, size int, wait bool) {
 
 	rd := <-finishCh
 	rd.Blocks = blocks
 	rd.roty = roty
 	rd.rotx = rotx
 	cycleCh <- rd
+	if wait {
+		for len(finishCh) == 0 {
+			log.Println("Waiting for render to finish:", len(finishCh))
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
 
 }
 
@@ -363,6 +388,8 @@ func DrawText(size int, rv *RenderVars, window *glfw.Window, monstersRemaining i
 
 func GlRenderer(size int, rv *RenderVars, window *glfw.Window) {
 	select {
+	case f := <-runGlCh:
+		f()
 	case rd1 := <-readyCh:
 		startFrame = time.Now()
 
