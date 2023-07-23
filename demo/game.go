@@ -88,3 +88,20 @@ func GenerateMaze(x, y int) [][]int {
 	}
 	return grid
 }
+
+func GenerateMarkov(x, y, z int) [][][]int {
+	grid := make([][][]int, y)
+	for i := 0; i < y; i++ {
+
+		var sheet [][]int
+		for j := 0; j < x; j++ {
+			var row []int
+			for k := 0; k < x; k++ {
+				row = append(row, 0)
+			}
+			sheet = append(sheet, row)
+		}
+		grid[i] = sheet
+	}
+	return grid
+}

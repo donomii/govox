@@ -152,15 +152,18 @@ func handleKeys(window *glfw.Window, maze [][]int) {
 
 var tiles int = 21
 var tileRadius = 10
+var blocksSize = 105
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	var size int = 105
-	window, rv := govox.InitGraphics(size, 1900, 1000)
+	window, rv := govox.InitGraphics(size, 800, 600)
 	maze := GenerateMaze(125, 125)
+	markov := GenerateMarkov(blocksSize, blocksSize, blocksSize)
+	markovB := GenerateMarkov(blocksSize, blocksSize, blocksSize)
 	InitAll(size, maze)
 	go handleKeys(window, maze)
-	go BlocksWorker(size, &rv, maze)
+	go BlocksWorker(size, &rv, maze, markov, markovB)
 	for !window.ShouldClose() {
 		govox.GlRenderer(size, &rv, window)
 	}
@@ -229,7 +232,7 @@ func LoadVox(file string) *voxfile.VoxFile {
 }
 
 func AddText(size int, blocks voxMap) {
-	message := "Kill them all"
+	message := "Markov voxel demo"
 	colour := mgl32.Vec4{1.0, 1.0, 1.0, 1.0}
 	if mode == "finish" {
 		message = "Good.  Do it again."
@@ -259,27 +262,63 @@ func AddText(size int, blocks voxMap) {
 	}
 }
 
-func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int) {
+var lastRuleTime time.Time
+var currentRule int
+var rules []MarkovRule
+
+func CopyMarkov(size int, a, b [][][]int) [][][]int {
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			for k := 0; k < size; k++ {
+				b[i][j][k] = a[i][j][k]
+			}
+		}
+	}
+	return b
+}
+func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int, markov, markovB [][][]int) {
 	player := LoadVox("models/chr_player.vox")
 	wall := LoadVox("models/wall5.vox")
 	monster := LoadVox("models/monster.vox")
+	markov[4][4][4] = 1                //Move me
+	markov[size-4][4][4] = 1           //Move me
+	markov[size-4][size-4][4] = 1      //Move me
+	markov[size-4][size-4][size-4] = 1 //Move me
 	voxFlipY(monster)
+
+	rules = []MarkovRule{
+		//MarkovRule{From: []int{1, 0, 0}, To: []int{2, 2, 1}},
+		MarkovRule{From: []int{1, 0, 0}, To: []int{2, 2, 1}},
+		MarkovRule{From: []int{1, 2, 2}, To: []int{3, 3, 1}},
+	}
+
 	for {
 		startFrame := time.Now()
+		if time.Now().Sub(lastRuleTime).Milliseconds() > 1 {
+
+			changed := ApplyRule(blocksSize, markov, markovB, rules[currentRule], false /* don't do all changes at once*/, 1)
+			CopyMarkov(size, markovB, markov)
+			if changed == 0 {
+				currentRule = (currentRule + 1) % len(rules)
+			}
+			lastRuleTime = time.Now()
+		}
 		//ClearDisplay(size, BlocksBuffer)
 		BlocksBuffer := govox.MakeBlocks(size)
-		AddText(size, BlocksBuffer)
+		//AddText(size, BlocksBuffer)
 		//ClearDisplay(size/5, LowResBlocks)
 		//AddMaze(size/5, PlayerPos, wall, maze, LowResBlocks)
 
-		AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
+		//AddMaze(size, PlayerPos, wall, maze, BlocksBuffer)
+
+		AddMarkov(blocksSize, PlayerPos, wall, markov, BlocksBuffer)
 		//DrawAbstractMaze(size, maze, BlocksBuffer)
 		//DrawPlayer(size, PlayerPos, BlocksBuffer)
 		magica2govox(size, Vec3{size / 2, 0, size / 2}, player, BlocksBuffer)
-		for _, m := range monsters {
-			//DrawAbstractMonster(size, m, BlocksBuffer)
-			AddMonster(size, m, PlayerPos, monster, BlocksBuffer)
-		}
+		//for _, m := range monsters {
+		//DrawAbstractMonster(size, m, BlocksBuffer)
+		//AddMonster(size, m, PlayerPos, monster, BlocksBuffer)
+		//}
 
 		//AddActors(Actrs, BlocksBuffer)
 		//BlocksBuffer = rise(int(size), BlocksBuffer)
@@ -288,7 +327,7 @@ func BlocksWorker(size int, rv *govox.RenderVars, maze [][]int) {
 		if govox.ShowTimings {
 			log.Println("Calculated ", size*size*size, "blocks in", (time.Now().Sub(startFrame)).Nanoseconds()/1000000)
 		}
-		govox.RenderBlocks(rv, BlocksBuffer, rotx, roty, int(size))
+		govox.RenderBlocks(rv, BlocksBuffer, rotx, roty, int(size), true)
 		//govox.SetCam(size/5, rv.Program)
 		//govox.RenderBlocks(&rv, window, &LowResBlocks, rotx, roty, int(size)/5)
 
